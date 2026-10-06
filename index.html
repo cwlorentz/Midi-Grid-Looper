@@ -46,7 +46,7 @@ button:active{filter:brightness(1.3);transform:scale(.95)}
 .tile{width:var(--tile);height:var(--tile);font-size:26px;line-height:1}
 .tile.txt{font-size:13px}
 #play{background:var(--text);color:#111}
-#play.on{background:var(--accent);color:#111;box-shadow:0 0 18px 2px color-mix(in srgb,var(--accent) 55%,transparent)}
+#play.on{background:var(--accent);color:#111;box-shadow:0 0 28px 5px color-mix(in srgb,var(--accent) 70%,transparent),0 0 6px var(--accent)}
 #bpmVal{min-width:84px;height:var(--tile);display:flex;align-items:center;justify-content:center;
   font-size:32px;font-weight:300;font-variant-numeric:tabular-nums;background:var(--bg);
   border-radius:6px;touch-action:none;cursor:ns-resize}
@@ -54,7 +54,7 @@ button:active{filter:brightness(1.3);transform:scale(.95)}
 #swing,#master{width:clamp(90px,11vw,190px)}
 /* instrument switch: drums grid or one melodic track's piano roll */
 .vbtn{font-size:12px;letter-spacing:.04em;box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--c) 70%,transparent)}
-.vbtn.on{background:var(--c);color:#111;box-shadow:0 0 14px 1px color-mix(in srgb,var(--c) 55%,transparent)}
+.vbtn.on{background:var(--c);color:#111;box-shadow:0 0 24px 4px color-mix(in srgb,var(--c) 70%,transparent),0 0 5px var(--c)}
 .vbtn.silent{opacity:.45}
 .spacer{flex:1}
 /* sliders with their label on top, so the bar has room for the record tiles */
@@ -90,13 +90,13 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 .name{background:transparent;justify-content:flex-start;text-align:left;font-size:13px;line-height:1;letter-spacing:.06em;color:var(--text);
   padding:0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:0;gap:10px}
 .head .name::before{content:'';flex:none;width:8px;height:8px;border-radius:50%;background:var(--c);
-  box-shadow:0 0 8px 1px color-mix(in srgb,var(--c) 70%,transparent)}
+  box-shadow:0 0 12px 2px color-mix(in srgb,var(--c) 85%,transparent)}
 .name:active{transform:none}
 .mute,.solo{grid-row:1/-1;width:var(--ms);height:100%;max-height:var(--tile);align-self:center;font-size:17px;
   background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 .mute{grid-column:2}.solo{grid-column:3}
-.mute.on{background:#e5393b;color:#fff;box-shadow:0 0 12px 1px rgba(229,57,59,.5)}
-.solo.on{background:#f0c419;color:#111;box-shadow:0 0 12px 1px rgba(240,196,25,.5)}
+.mute.on{background:#e5393b;color:#fff;box-shadow:0 0 22px 4px rgba(229,57,59,.65),0 0 5px #e5393b}
+.solo.on{background:#f0c419;color:#111;box-shadow:0 0 22px 4px rgba(240,196,25,.65),0 0 5px #f0c419}
 .head .vol{grid-column:1;grid-row:2;width:100%;height:18px;--fill:color-mix(in srgb,var(--c) 70%,var(--bg))}
 .head .vol::-webkit-slider-runnable-track{height:3px}
 .head .vol::-webkit-slider-thumb{width:12px;height:16px;margin-top:-6.5px;border-radius:4px;background:#c9cbd1}
@@ -111,10 +111,10 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 .cell.ph{background:var(--ph)}
 .cell.ph::after{background:#9a9da6}
 .cell.on{background:var(--c);
-  box-shadow:0 0 20px 3px color-mix(in srgb,var(--c) 65%,transparent),0 0 4px color-mix(in srgb,var(--c) 90%,transparent)}
+  box-shadow:0 0 28px 5px color-mix(in srgb,var(--c) 75%,transparent),0 0 6px var(--c)}
 .cell.on::after{display:none}
 .cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff);
-  box-shadow:0 0 22px 4px color-mix(in srgb,var(--c) 80%,transparent),0 0 4px #fff}
+  box-shadow:0 0 32px 7px color-mix(in srgb,var(--c) 90%,transparent),0 0 6px #fff}
 .row.silent .steps,.row.silent .name{opacity:.35}
 
 /* ---------- piano roll (shown in place of the drum grid) ---------- */
@@ -133,7 +133,7 @@ body.mel #roll{display:grid}
 .rh .wide{flex:1;width:auto;min-width:0}
 .rh .name{flex:1;width:auto;font-size:15px;padding:0 4px}
 .rh .mute,.rh .solo{font-size:17px}
-.rh .seg.on{background:var(--c);color:#111}
+.rh .seg.on{background:var(--c);color:#111;box-shadow:0 0 18px 3px color-mix(in srgb,var(--c) 60%,transparent)}
 .rval{min-width:0;height:100%;flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:300;
   font-variant-numeric:tabular-nums;background:var(--bg);border-radius:6px;touch-action:none;cursor:ew-resize}
 #scaleBtn{touch-action:none;cursor:ew-resize}
@@ -163,7 +163,7 @@ body.mel #roll{display:grid}
 .rrow.root .cell:not(.on):not(.tail)::after{background:color-mix(in srgb,var(--c) 45%,var(--dot))}
 .rrow.root .nlab{background:color-mix(in srgb,var(--c) 18%,transparent)}
 #rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a));
-  box-shadow:0 0 12px color-mix(in srgb,var(--c) calc(var(--v) * 60%),transparent)}
+  box-shadow:0 0 20px 3px color-mix(in srgb,var(--c) calc(var(--v) * 75%),transparent)}
 #rbody .cell.tail{background:color-mix(in srgb,var(--c) calc(var(--v) * 45%),var(--cell-a));border-radius:0}
 #rbody .cell.tail::after{display:none}
 #rbody .cell.ph:not(.on):not(.tail){background:var(--ph)}
@@ -178,7 +178,7 @@ body.mel #roll{display:grid}
 .drow{display:flex;gap:6px;align-items:center;flex:none}
 .drow>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0 2px 0 4px}
 #barsRow button{flex:1;width:auto;min-width:0}
-.seg.on,#countIn.on{background:var(--accent);color:#111}
+.seg.on,#countIn.on{background:var(--accent);color:#111;box-shadow:0 0 18px 3px color-mix(in srgb,var(--accent) 55%,transparent)}
 #recStatus{flex:1;min-height:0;display:flex;align-items:center;font-size:12px;line-height:1.2;font-weight:600;color:var(--dim);padding:0 4px}
 #recStatus span{overflow:hidden;max-height:2.4em}
 #meter{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--line);visibility:hidden}
