@@ -83,6 +83,48 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 .cell.on.ph{background:#fff;box-shadow:inset 0 0 0 5px var(--c)}
 .row.silent .steps,.row.silent .name{opacity:.35}
 
+/* ---------- layers view (audio loops recorded from the mic or the grid) ---------- */
+#view.rec{background:#e5393b;color:#fff}
+#layers{flex:1;min-height:0;display:none;flex-direction:column;gap:6px;padding:6px 10px 10px}
+body.lyr #grid,body.lyr #clear{display:none}
+body.lyr #layers{display:flex}
+#recbar{flex:none;display:flex;align-items:center;gap:12px;padding:6px 10px;background:var(--panel)}
+#recbar .group{height:var(--tile)}
+.seg.on,#countIn.on{background:var(--accent);color:#111}
+#rec{background:#3a1d1f;color:#e5393b;font-size:30px}
+#rec.armed{background:#e5393b;color:#fff;animation:blink .8s steps(2) infinite}
+#rec.live{background:#e5393b;color:#fff}
+@keyframes blink{50%{background:#3a1d1f;color:#e5393b}}
+#recStatus{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:600;color:var(--dim)}
+#recStatus span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#meter{height:6px;max-width:220px;background:var(--line);visibility:hidden}
+#meter.show{visibility:visible}
+#meter i{display:block;height:100%;width:0;background:#5ee08a}
+#latVal{min-width:76px;height:var(--tile);display:flex;align-items:center;justify-content:center;font-size:18px;
+  font-weight:600;font-variant-numeric:tabular-nums;background:var(--bg);border-radius:2px;touch-action:none;cursor:ns-resize}
+#lanes{flex:1;min-height:0;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:6px}
+.del{grid-row:1/-1;grid-column:3;width:var(--ms);height:100%;max-height:var(--tile);align-self:center;font-size:17px}
+.del.armed{background:#e5393b;color:#fff}
+.lane{position:relative;background:var(--cell-a);border-radius:2px;overflow:hidden;min-height:0;--p:0%}
+.lane canvas{position:absolute;inset:0;width:100%;height:100%}
+.lane .lph{position:absolute;top:0;bottom:0;left:0;width:3px;margin-left:-1px;background:#fff;display:none}
+#layers.run .row:not(.empty) .lph{display:block}
+.lane .msg{position:absolute;inset:0;display:flex;align-items:center;padding-left:14px;color:var(--dim);
+  font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.lane.recording{background:linear-gradient(to right,#5a1a1c var(--p),var(--cell-a) var(--p))}
+.lane.recording .msg{color:#ff8a8a}
+#lanes .row.empty .head{opacity:.35}
+#lanes .row.empty .head button{pointer-events:none}
+#lanes .row.silent .lane{opacity:.35}
+
+/* ---------- message banner ---------- */
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));z-index:15;
+  display:none;align-items:center;gap:14px;padding:10px 10px 10px 18px;background:#e5393b;color:#fff;font-size:15px;line-height:1.35}
+#toast.show{display:flex}
+#toast.info{background:var(--panel2)}
+#toast span{flex:1}
+#toast button{background:rgba(0,0,0,.25)}
+
 /* ---------- overlays ---------- */
 #rotate{display:none;position:fixed;inset:0;z-index:20;background:var(--bg);align-items:center;justify-content:center;
   flex-direction:column;gap:12px;font-size:22px;text-align:center;padding:24px}
@@ -110,10 +152,37 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
     <input id="master" type="range" min="0" max="100" step="1" value="80">
   </div>
   <div class="spacer"></div>
+  <button id="view" class="tile txt">Layers</button>
   <button id="clear" class="tile txt">Clear</button>
   <button id="fs" class="tile" aria-label="Full screen">⛶</button>
 </header>
 <main id="grid"></main>
+<section id="layers">
+  <div id="recbar">
+    <div class="group">
+      <label>Rec from</label>
+      <button class="tile txt seg" data-src="mic">Mic</button>
+      <button class="tile txt seg" data-src="grid">Grid</button>
+    </div>
+    <div class="group">
+      <label>Bars</label>
+      <button class="tile seg bars" data-bars="1">1</button>
+      <button class="tile seg bars" data-bars="2">2</button>
+      <button class="tile seg bars" data-bars="4">4</button>
+      <button class="tile seg bars" data-bars="8">8</button>
+    </div>
+    <button id="countIn" class="tile txt" aria-label="Count-in bar before recording">Count</button>
+    <button id="rec" class="tile" aria-label="Record">●</button>
+    <div id="recStatus"><span>Ready</span><div id="meter"><i></i></div></div>
+    <div class="group">
+      <label>Delay</label>
+      <div id="latVal" role="spinbutton" aria-label="Mic delay compensation, drag up or down">0</div>
+      <button id="calib" class="tile txt" aria-label="Measure mic delay">Cal</button>
+    </div>
+  </div>
+  <div id="lanes"></div>
+</section>
+<div id="toast" role="alert"><span></span><button class="tile" aria-label="Dismiss">✕</button></div>
 <div id="rotate"><span>⟳</span>Turn the tablet sideways (landscape) to use the looper.</div>
 
 <script>
@@ -166,7 +235,7 @@ function save() {
 }
 
 /* ---------------- audio engine ---------------- */
-let ctx = null, masterGain, noiseBuf, trackGains = [], openHat = null;
+let ctx = null, masterGain, gridBus, noiseBuf, trackGains = [], openHat = null;
 
 function initAudio() {
   if (ctx) { if (ctx.state !== 'running') ctx.resume(); return; }
@@ -180,7 +249,9 @@ function initAudio() {
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  trackGains = TRACKS.map(() => { const g = ctx.createGain(); g.connect(masterGain); return g; });
+  gridBus = ctx.createGain();                     // all drum tracks, tapped when bouncing the grid to a layer
+  gridBus.connect(masterGain);
+  trackGains = TRACKS.map(() => { const g = ctx.createGain(); g.connect(gridBus); return g; });
   applyMix(true);
   if (ctx.state !== 'running') ctx.resume();
 }
@@ -317,6 +388,7 @@ function schedule() {
     const sd = stepDur();
     const swing = (curStep % 2) ? (state.swing / 100 * 2 - 1) * sd : 0;
     const t = nextTime + swing;
+    if (curStep === 0) onBar(nextTime);
     for (let i = 0; i < TRACKS.length; i++) {
       if (state.tracks[i].steps[curStep] && audible(i)) VOICES[TRACKS[i].voice](t, trackGains[i], 1);
     }
@@ -353,6 +425,7 @@ function start() {
   playing = true;
   curStep = 0;
   queue = [];
+  barCount = -1; barTimes = [];
   nextTime = ctx.currentTime + 0.06;
   schedule();
   timer.start();
@@ -363,6 +436,8 @@ function stop() {
   playing = false;
   timer.stop();
   queue = [];
+  if (rec.state === 'count' || rec.state === 'wait' || rec.state === 'rec') cancelRec('Recording cancelled');
+  stopLayers();
   setPlayhead(-1);
   playBtn.classList.remove('on'); playBtn.textContent = '▶'; playBtn.setAttribute('aria-label', 'Play');
   keepAwake(false);
@@ -430,6 +505,7 @@ function draw() {
     while (queue.length && queue[0].time <= now) s = queue.shift().step;
     if (s !== null) setPlayhead(s);
   }
+  drawLayers();
   requestAnimationFrame(draw);
 }
 
@@ -487,6 +563,7 @@ playBtn.addEventListener('pointerdown', e => { e.preventDefault(); playing ? sto
 function setBpm(b) {
   state.bpm = Math.max(40, Math.min(240, Math.round(b)));
   $('bpmVal').textContent = state.bpm;
+  retimeLayers();
   save();
 }
 // press-and-hold repeat on − / +
@@ -540,14 +617,541 @@ $('fs').addEventListener('click', async () => {
   } catch (e) {}
 });
 
+/* =========================================================
+   Audio layers: loops recorded from the mic, or bounced from the grid,
+   that play on top of the pattern. Recording starts and stops on bar lines.
+   ========================================================= */
+const MAX_LAYERS = 8;
+const LAYER_COLORS = ['#4da3ff', '#ff6fd0', '#5ee08a', '#ffb340', '#8f7bff', '#3fd0c9', '#ffe14d', '#ff5a5a'];
+// metadata lives in state (localStorage); the audio itself in IndexedDB, keyed by layer id
+if (!Array.isArray(state.layers)) state.layers = [];
+state.rec = Object.assign({ src: 'mic', bars: 2, countIn: true, latency: null }, state.rec);
+
+const layerAudio = new Map();   // id -> AudioBuffer
+const layerSrc = new Map();     // id -> the AudioBufferSourceNode playing now
+const layerGains = new Map();   // id -> GainNode
+let barCount = -1, barTimes = []; // most recent bar starts the scheduler has queued: {idx, time}
+
+const barDur = () => stepDur() * STEPS;
+const mod = (a, n) => ((a % n) + n) % n;
+const layerById = id => state.layers.find(l => l.id === id);
+
+/* ---------- IndexedDB (a few MB per layer is too big for localStorage) ---------- */
+let dbP = null;
+function db() {
+  return dbP || (dbP = new Promise((res, rej) => {
+    const r = indexedDB.open('gridlooper', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('layers');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+}
+async function dbDo(mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction('layers', mode), req = fn(tx.objectStore('layers'));
+    tx.oncomplete = () => res(req.result);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
+}
+async function loadLayers() {
+  const keep = [];
+  for (const l of state.layers) {
+    try {
+      const r = await dbDo('readonly', st => st.get(l.id));
+      if (!r || !r.data) continue;
+      const b = new AudioBuffer({ length: r.data.length, sampleRate: r.sr, numberOfChannels: 1 });
+      b.copyToChannel(r.data, 0);
+      layerAudio.set(l.id, b);
+      keep.push(l);
+    } catch (e) {}
+  }
+  if (keep.length !== state.layers.length) { state.layers = keep; save(); }
+  renderLanes();
+}
+
+/* ---------- playback: every bar, each layer gets a fresh source at the right spot ---------- */
+function layerGain(l) {
+  let g = layerGains.get(l.id);
+  if (!g) { g = ctx.createGain(); g.gain.value = l.mute ? 0 : l.vol * l.vol; g.connect(masterGain); layerGains.set(l.id, g); }
+  return g;
+}
+function applyLayerMix(l) {
+  const g = layerGains.get(l.id);
+  if (g) g.gain.setTargetAtTime(l.mute ? 0 : l.vol * l.vol, ctx.currentTime, 0.015);
+}
+// start layer l at time `when`, which is `frac` of the way into transport bar `idx`
+function layerPlay(l, when, idx, frac) {
+  const buf = layerAudio.get(l.id);
+  if (!buf || !ctx) return;
+  const off = (mod(idx - l.phase, l.bars) + frac) * l.barDur;
+  const old = layerSrc.get(l.id);
+  if (old) { try { old.stop(when); } catch (e) {} }
+  if (off >= buf.duration) { layerSrc.delete(l.id); return; }
+  const s = ctx.createBufferSource();
+  s.buffer = buf;
+  s.playbackRate.value = l.barDur / barDur();    // other tempo than recorded: speed (and pitch) follow
+  s.connect(layerGain(l));
+  s.start(when, off);
+  layerSrc.set(l.id, s);
+}
+function onBar(t) {
+  barCount++;
+  barTimes.push({ idx: barCount, time: t });
+  if (barTimes.length > 4) barTimes.shift();
+  recOnBar(t);
+  for (const l of state.layers) layerPlay(l, t, barCount, 0);
+}
+// bring a layer in mid-bar (a take that just finished), and at any bar line already queued
+function layerJoin(l) {
+  if (!playing) return;
+  const t = ctx.currentTime + 0.03;
+  for (const b of barTimes) {
+    if (b.time > t) layerPlay(l, b.time, b.idx, 0);
+    else if (b === barTimes[barTimes.length - 1] || barTimes[barTimes.indexOf(b) + 1].time > t) {
+      layerPlay(l, t, b.idx, Math.min((t - b.time) / barDur(), 0.999));
+    }
+  }
+}
+function stopLayers() {
+  for (const s of layerSrc.values()) { try { s.stop(); } catch (e) {} }
+  layerSrc.clear();
+}
+function retimeLayers() {
+  if (!ctx) return;
+  for (const [id, s] of layerSrc) {
+    const l = layerById(id);
+    if (l) s.playbackRate.setValueAtTime(l.barDur / barDur(), ctx.currentTime);
+  }
+}
+function deleteLayer(l) {
+  const s = layerSrc.get(l.id);
+  if (s) { try { s.stop(); } catch (e) {} layerSrc.delete(l.id); }
+  const g = layerGains.get(l.id);
+  if (g) { g.disconnect(); layerGains.delete(l.id); }
+  layerAudio.delete(l.id);
+  state.layers = state.layers.filter(x => x !== l);
+  dbDo('readwrite', st => st.delete(l.id)).catch(() => {});
+  save(); renderLanes();
+}
+
+/* ---------- capture: an AudioWorklet copies exact sample ranges, so takes line up with the bar ---------- */
+const CAPTURE_SRC = `class Cap extends AudioWorkletProcessor{
+constructor(){super();this.job=null;this.peak=0;this.n=0;
+this.port.onmessage=e=>{const m=e.data;
+if(m.cmd==='start')this.job={id:m.id,start:m.start,stop:Infinity,parts:[],len:0};
+else if(m.cmd==='stop'){if(this.job&&this.job.id===m.id)this.job.stop=m.stop}
+else if(m.cmd==='cancel')this.job=null}}
+process(inputs){const ch=inputs[0]&&inputs[0][0],n=ch?ch.length:128,f0=currentFrame,j=this.job;
+if(ch)for(let i=0;i<n;i++){const a=Math.abs(ch[i]);if(a>this.peak)this.peak=a}
+if(++this.n>=8){this.port.postMessage({peak:this.peak});this.peak=0;this.n=0}
+if(j){const next=j.start+j.len;
+if(f0>next&&next<j.stop){const z=Math.min(f0,j.stop)-next;j.parts.push(new Float32Array(z));j.len+=z}
+const a=Math.max(j.start+j.len,f0),b=Math.min(j.stop,f0+n);
+if(b>a){const p=new Float32Array(b-a);if(ch)p.set(ch.subarray(a-f0,b-f0));j.parts.push(p);j.len+=b-a}
+if(f0+n>=j.stop){const out=new Float32Array(j.len);let o=0;for(const p of j.parts){out.set(p,o);o+=p.length}
+this.port.postMessage({id:j.id,data:out},[out.buffer]);this.job=null}}
+return true}}
+registerProcessor('gl-capture',Cap);`;
+
+let workletP = null, micCap = null, gridCap = null, micStream = null, micSrc = null, micInLatency = 0;
+let jobSeq = 0, meterPeak = 0, meterLevel = 0;
+const jobWait = new Map();
+
+class UserError extends Error {}
+
+function capNode() {
+  const n = new AudioWorkletNode(ctx, 'gl-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+  n.port.onmessage = e => {
+    const m = e.data;
+    if (m.id) { const r = jobWait.get(m.id); if (r) { jobWait.delete(m.id); r(m.data); } }
+    else if (n === micCap && micStream) meterPeak = Math.max(meterPeak, m.peak);
+  };
+  n.connect(ctx.destination);   // outputs silence; the connection just keeps it running
+  return n;
+}
+function ensureWorklet() {
+  if (!ctx.audioWorklet) return Promise.reject(new UserError('Recording needs a newer Chrome (AudioWorklet is missing). Open the app from its https:// address in Chrome.'));
+  return workletP || (workletP = ctx.audioWorklet
+    .addModule(URL.createObjectURL(new Blob([CAPTURE_SRC], { type: 'text/javascript' })))
+    .then(() => { micCap = capNode(); gridCap = capNode(); gridBus.connect(gridCap); })
+    .catch(e => { workletP = null; throw e; }));
+}
+async function ensureMic() {
+  if (micStream && micStream.getAudioTracks().some(t => t.readyState === 'live')) return;
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new UserError('The mic only works when the app is opened from its https:// address (GitHub Pages or Netlify), not from a file on the tablet.');
+  }
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, latency: 0 } });
+  } catch (e) {
+    micStream = null;
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') throw new UserError(
+      'Microphone access is blocked for this app. In Chrome tap ⋮ › Settings › Site settings › Microphone, allow this site, then tap record again.');
+    if (e.name === 'NotFoundError' || e.name === 'OverconstrainedError') throw new UserError('No microphone found on this device.');
+    if (e.name === 'NotReadableError') throw new UserError('The microphone is busy in another app. Close it and try again.');
+    throw new UserError('Could not open the microphone (' + e.name + ').');
+  }
+  const track = micStream.getAudioTracks()[0];
+  const st = track.getSettings ? track.getSettings() : {};
+  micInLatency = typeof st.latency === 'number' ? st.latency : 0.01;
+  track.addEventListener('ended', releaseMic);
+  micSrc = ctx.createMediaStreamSource(micStream);
+  micSrc.connect(micCap);
+}
+function releaseMic() {
+  if (micSrc) { micSrc.disconnect(); micSrc = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+function captureStart(node, startFrame) {
+  const id = ++jobSeq;
+  node.port.postMessage({ cmd: 'start', id, start: startFrame });
+  return {
+    done: new Promise(r => jobWait.set(id, r)),
+    stop: f => node.port.postMessage({ cmd: 'stop', id, stop: f }),
+    cancel: () => { node.port.postMessage({ cmd: 'cancel' }); jobWait.delete(id); },
+  };
+}
+
+// mic delay = time from a note being scheduled to its echo reaching the worklet (out + in)
+function autoLatencyMs() {
+  const out = ctx ? (ctx.outputLatency || ctx.baseLatency || 0.02) : 0.02;
+  return Math.round((out + micInLatency) * 1000);
+}
+const latencyMs = () => state.rec.latency != null ? state.rec.latency : autoLatencyMs();
+
+/* ---------- recording ---------- */
+const rec = { state: 'idle', src: 'mic', bars: 2, startBar: 0, offset: 0, cap: null, t0: 0 };
+
+function click(t, accent) {
+  const o = osc('square', accent ? 1600 : 1100), g = ctx.createGain();
+  env(g.gain, t, 0.35, 0.001, 0.04);
+  o.connect(g).connect(masterGain); o.start(t); o.stop(t + 0.06);
+}
+function beginRec(t) {
+  rec.state = 'rec'; rec.t0 = t;
+  rec.startBar = barCount;
+  rec.cap = captureStart(rec.src === 'mic' ? micCap : gridCap, Math.round((t + rec.offset) * ctx.sampleRate));
+}
+function recOnBar(t) {
+  if (rec.state === 'count' || rec.state === 'wait') {
+    if (barCount >= rec.startBar) beginRec(t);
+    else if (rec.state === 'count') for (let q = 0; q < 4; q++) click(t + q * 4 * stepDur(), q === 0);
+  } else if (rec.state === 'rec' && barCount === rec.startBar + rec.bars) {
+    rec.state = 'finish';
+    const meta = { src: rec.src, bars: rec.bars, startBar: rec.startBar };
+    rec.cap.stop(Math.round((t + rec.offset) * ctx.sampleRate));
+    rec.cap.done.then(data => finishTake(data, meta));
+  }
+}
+async function onRecTap() {
+  initAudio();
+  if (rec.state === 'calib' || rec.state === 'finish') return;
+  if (rec.state !== 'idle') { cancelRec('Recording cancelled'); return; }
+  if (state.layers.length >= MAX_LAYERS) { toast('All 8 layers are full. Clear one with ✕ to record another.', 'info'); return; }
+  rec.state = 'prep';
+  try {
+    await ensureWorklet();
+    if (state.rec.src === 'mic') await ensureMic();
+  } catch (e) {
+    rec.state = 'idle';
+    toast(e instanceof UserError ? e.message : 'Recording failed to start: ' + e.message);
+    return;
+  }
+  if (rec.state !== 'prep') return;    // cancelled while the mic was opening
+  hideToast();
+  rec.src = state.rec.src; rec.bars = state.rec.bars;
+  rec.offset = rec.src === 'mic' ? latencyMs() / 1000 : 0;
+  if (!playing) {
+    const ci = state.rec.countIn && rec.src === 'mic';
+    rec.startBar = ci ? 1 : 0;
+    rec.state = ci ? 'count' : 'wait';
+    start();
+  } else {
+    const last = barTimes[barTimes.length - 1];
+    if (last && last.time > ctx.currentTime + 0.02) beginRec(last.time);  // that bar line is queued but not heard yet
+    else { rec.startBar = barCount + 1; rec.state = 'wait'; }
+  }
+}
+function cancelRec(msg) {
+  if (rec.cap && rec.state === 'rec') rec.cap.cancel();
+  rec.cap = null; rec.state = 'idle';
+  if (msg) toast(msg, 'info', 2500);
+}
+function finishTake(data, meta) {
+  rec.state = 'idle'; rec.cap = null;
+  if (!data || !data.length || state.layers.length >= MAX_LAYERS) return;
+  const sr = ctx.sampleRate;
+  let peak = 0;
+  for (let i = 0; i < data.length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
+  if (meta.src === 'mic') {
+    // short fades so the loop point doesn't click, and lift quiet takes (up to 8x)
+    const gain = peak > 0.001 && peak < 0.7 ? Math.min(0.7 / peak, 8) : 1;
+    const fade = Math.round(sr * 0.003);
+    for (let i = 0; i < data.length; i++) {
+      const e = Math.min(1, i / fade, (data.length - 1 - i) / fade);
+      data[i] *= gain * e;
+    }
+    if (peak < 0.002) toast('That take was silent. Check the mic isn\'t covered or muted.', 'info');
+  }
+  const used = state.layers.map(l => l.color);
+  const n = state.layers.filter(l => l.src === meta.src).length + 1;
+  const l = {
+    id: 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    src: meta.src, name: (meta.src === 'mic' ? 'Mic ' : 'Grid ') + n,
+    color: LAYER_COLORS.find(c => !used.includes(c)) || LAYER_COLORS[0],
+    vol: 0.8, mute: false, bars: meta.bars, barDur: data.length / sr / meta.bars, phase: mod(meta.startBar, meta.bars),
+  };
+  const b = ctx.createBuffer(1, data.length, sr);
+  b.copyToChannel(data, 0);
+  layerAudio.set(l.id, b);
+  state.layers.push(l);
+  save(); renderLanes();
+  layerJoin(l);
+  dbDo('readwrite', st => st.put({ sr, data }, l.id))
+    .catch(() => toast('This layer plays now but could not be saved (storage full or blocked).', 'info'));
+}
+
+// play clicks out of the speaker, find them in the mic signal, and use the median delay
+async function calibrate() {
+  initAudio();
+  if (rec.state !== 'idle') return;
+  rec.state = 'calib';
+  try {
+    await ensureWorklet(); await ensureMic();
+    if (playing) stop();
+    const N = 6, GAP = 0.5, sr = ctx.sampleRate, t0 = ctx.currentTime + 0.4;
+    const out = ctx.createGain(); out.gain.value = 0.6; out.connect(ctx.destination);
+    for (let i = 0; i < N; i++) {
+      const o = osc('square', 1000), g = ctx.createGain();
+      env(g.gain, t0 + i * GAP, 1, 0.001, 0.03);
+      o.connect(g).connect(out); o.start(t0 + i * GAP); o.stop(t0 + i * GAP + 0.05);
+    }
+    const PRE = 0.1;   // listen a little before each click too, to know how quiet the room is
+    const cap = captureStart(micCap, Math.round((t0 - PRE) * sr));
+    cap.stop(Math.round((t0 + N * GAP) * sr));
+    const data = await cap.done;
+    const delays = [];
+    for (let i = 0; i < N; i++) {
+      const a = Math.round((PRE + i * GAP) * sr), b = Math.min(data.length, Math.round((PRE + i * GAP + 0.45) * sr));
+      let pk = 0, floor = 0;
+      for (let k = a; k < b; k++) pk = Math.max(pk, Math.abs(data[k]));
+      for (let k = a - Math.round(0.05 * sr); k < a; k++) floor = Math.max(floor, Math.abs(data[k]));
+      if (pk < 0.02 || pk < floor * 4) continue;
+      for (let k = a; k < b; k++) if (Math.abs(data[k]) > pk * 0.35) { delays.push((k - a) / sr); break; }
+    }
+    delays.sort((x, y) => x - y);
+    const med = delays[delays.length >> 1];
+    const agree = delays.filter(d => Math.abs(d - med) < 0.012).length;
+    if (delays.length < 4 || agree < 4) {
+      toast('Couldn\'t hear the test clicks clearly. Unplug headphones, turn the volume up, keep the room quiet and try Cal again.', 'info');
+    } else {
+      state.rec.latency = Math.round(med * 1000);
+      save();
+      toast('Mic delay measured: ' + state.rec.latency + ' ms. Takes will be shifted by that much.', 'info', 4000);
+    }
+  } catch (e) {
+    toast(e instanceof UserError ? e.message : 'Measuring failed: ' + e.message);
+  }
+  rec.state = 'idle';
+}
+
+/* ---------- layers UI ---------- */
+const lanesEl = $('lanes'), layersEl = $('layers'), lrows = [];
+for (let i = 0; i < MAX_LAYERS; i++) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML =
+    `<div class="head">
+       <button class="name" data-l="${i}"></button>
+       <button class="mute" data-l="${i}" aria-label="Mute layer ${i + 1}">M</button>
+       <button class="del" data-l="${i}" aria-label="Clear layer ${i + 1}">✕</button>
+       <input class="vol" type="range" min="0" max="100" step="1" data-l="${i}" aria-label="Layer ${i + 1} volume">
+     </div>
+     <div class="lane"><canvas></canvas><div class="lph"></div><div class="msg"></div></div>`;
+  lanesEl.appendChild(row);
+  lrows[i] = { row, name: row.querySelector('.name'), mute: row.querySelector('.mute'), del: row.querySelector('.del'),
+    vol: row.querySelector('.vol'), lane: row.querySelector('.lane'), canvas: row.querySelector('canvas'),
+    ph: row.querySelector('.lph'), msg: row.querySelector('.msg'), drawn: null };
+}
+function drawWave(r, l) {
+  const c = r.canvas, w = Math.round(c.clientWidth * devicePixelRatio), h = Math.round(c.clientHeight * devicePixelRatio);
+  const key = l ? l.id + w + 'x' + h : 'none' + w;
+  if (r.drawn === key || !w) return;
+  r.drawn = key;
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, w, h);
+  const buf = l && layerAudio.get(l.id);
+  if (!buf) return;
+  g.fillStyle = 'rgba(255,255,255,.08)';
+  for (let b = 1; b < l.bars; b++) g.fillRect(Math.round(b / l.bars * w), 0, Math.max(1, devicePixelRatio), h);
+  const d = buf.getChannelData(0), per = d.length / w, mid = h / 2;
+  g.fillStyle = l.color;
+  for (let x = 0; x < w; x++) {
+    let lo = 0, hi = 0;
+    for (let k = Math.floor(x * per), e = Math.min(d.length, Math.floor((x + 1) * per)); k < e; k += 4) {
+      const v = d[k]; if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+    g.fillRect(x, mid - hi * mid * 0.95, 1, Math.max(1, (hi - lo) * mid * 0.95));
+  }
+}
+function renderLanes() {
+  lrows.forEach((r, i) => {
+    const l = state.layers[i];
+    r.row.classList.toggle('empty', !l);
+    r.row.classList.toggle('silent', !!(l && l.mute));
+    r.row.style.setProperty('--c', l ? l.color : '#5a5f6b');
+    r.name.textContent = l ? `${l.name} · ${l.bars} bar${l.bars > 1 ? 's' : ''}` : `Layer ${i + 1}`;
+    r.mute.classList.toggle('on', !!(l && l.mute));
+    setRange(r.vol, l ? Math.round(l.vol * 100) : 0);
+    r.msg.textContent = l ? '' : (i === state.layers.length ? 'Empty · next take goes here' : 'Empty');
+    drawWave(r, l);
+  });
+  layersEl.querySelectorAll('[data-src]').forEach(b => b.classList.toggle('on', b.dataset.src === state.rec.src));
+  layersEl.querySelectorAll('[data-bars]').forEach(b => b.classList.toggle('on', +b.dataset.bars === state.rec.bars));
+  $('countIn').classList.toggle('on', state.rec.countIn);
+}
+
+let lastStatus = '';
+function drawLayers() {
+  const shown = document.body.classList.contains('lyr');
+  const active = rec.state !== 'idle';
+  $('view').classList.toggle('rec', active && !shown);
+  if (!shown) return;
+  // where the listener is in the transport right now
+  let pos = null;
+  if (playing && ctx) {
+    const now = ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
+    for (let i = barTimes.length - 1; i >= 0; i--) {
+      if (barTimes[i].time <= now) { pos = { idx: barTimes[i].idx, frac: Math.min((now - barTimes[i].time) / barDur(), 0.999) }; break; }
+    }
+  }
+  layersEl.classList.toggle('run', !!pos);
+  if (pos) state.layers.forEach((l, i) => {
+    lrows[i].ph.style.left = ((mod(pos.idx - l.phase, l.bars) + pos.frac) / l.bars * 100) + '%';
+  });
+  // status line + the lane being recorded into
+  let txt = state.layers.length + ' of ' + MAX_LAYERS + ' layers' + (micStream ? ' · mic on' : '');
+  let prog = -1;
+  const recBtn = $('rec');
+  switch (rec.state) {
+    case 'prep': txt = state.rec.src === 'mic' ? 'Opening mic…' : 'Starting…'; break;
+    case 'calib': txt = 'Measuring mic delay… stay quiet'; break;
+    case 'count': txt = pos && pos.idx < rec.startBar ? 'Count-in ' + (Math.floor(pos.frac * 4) + 1) : 'Count-in'; break;
+    case 'wait': txt = 'Recording starts next bar'; break;
+    case 'rec':
+      if (pos && pos.idx >= rec.startBar) {
+        const b = Math.min(pos.idx - rec.startBar, rec.bars - 1);
+        txt = `Recording bar ${b + 1} / ${rec.bars}`;
+        prog = (b + pos.frac) / rec.bars;
+      } else txt = 'Recording starts next bar';
+      break;
+    case 'finish': txt = 'Saving take…'; prog = 1; break;
+  }
+  if (txt !== lastStatus) { $('recStatus').firstElementChild.textContent = txt; lastStatus = txt; }
+  recBtn.classList.toggle('armed', ['prep', 'count', 'wait', 'calib'].includes(rec.state));
+  recBtn.classList.toggle('live', rec.state === 'rec' || rec.state === 'finish');
+  recBtn.textContent = active && rec.state !== 'calib' ? '■' : '●';
+  lrows.forEach((r, i) => {
+    const on = prog >= 0 && i === state.layers.length;
+    r.lane.classList.toggle('recording', on);
+    if (on) { r.lane.style.setProperty('--p', (prog * 100) + '%'); r.msg.textContent = '● ' + txt; }
+    else if (!state.layers[i] && r.msg.textContent.startsWith('●')) renderLanes();
+  });
+  // input meter
+  meterLevel = Math.max(meterPeak, meterLevel * 0.9); meterPeak = 0;
+  const m = $('meter');
+  m.classList.toggle('show', !!micStream);
+  m.firstElementChild.style.width = Math.min(100, Math.sqrt(meterLevel) * 100) + '%';
+  m.firstElementChild.style.background = meterLevel > 0.9 ? '#e5393b' : '#5ee08a';
+  const lv = (state.rec.latency != null ? '' : 'auto ') + latencyMs();
+  if ($('latVal').textContent !== lv) $('latVal').textContent = lv;
+}
+
+/* ---------- layers controls ---------- */
+$('view').addEventListener('click', () => {
+  const on = document.body.classList.toggle('lyr');
+  $('view').textContent = on ? 'Grid' : 'Layers';
+  if (on) renderLanes();
+  else if (rec.state === 'idle') releaseMic();     // don't hold the mic while it isn't needed
+});
+$('rec').addEventListener('pointerdown', e => { e.preventDefault(); onRecTap(); });
+$('countIn').addEventListener('click', () => { state.rec.countIn = !state.rec.countIn; renderLanes(); save(); });
+layersEl.querySelectorAll('[data-src]').forEach(b => b.addEventListener('click', () => {
+  if (rec.state !== 'idle') return;
+  state.rec.src = b.dataset.src; renderLanes(); save();
+}));
+layersEl.querySelectorAll('[data-bars]').forEach(b => b.addEventListener('click', () => {
+  if (rec.state !== 'idle') return;
+  state.rec.bars = +b.dataset.bars; renderLanes(); save();
+}));
+$('calib').addEventListener('click', calibrate);
+{ // drag the delay number up/down to fine-tune by hand, like BPM
+  const el = $('latVal');
+  let drag = null;
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture(e.pointerId); drag = { y: e.clientY, v: latencyMs() }; });
+  el.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const v = Math.max(0, Math.min(500, Math.round(drag.v + (drag.y - e.clientY) / 2)));
+    if (v !== state.rec.latency) { state.rec.latency = v; save(); }
+  });
+  for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, () => { drag = null; });
+}
+lanesEl.addEventListener('pointerdown', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  e.preventDefault();
+  const l = state.layers[+b.dataset.l];
+  if (!l) return;
+  if (b.classList.contains('mute')) { l.mute = !l.mute; if (ctx) applyLayerMix(l); renderLanes(); save(); }
+  else if (b.classList.contains('del')) {   // needs a second tap within 2.5 s
+    if (!b._armed) {
+      b.classList.add('armed'); b.textContent = '?';
+      b._armed = setTimeout(() => { b._armed = 0; b.classList.remove('armed'); b.textContent = '✕'; }, 2500);
+      return;
+    }
+    clearTimeout(b._armed); b._armed = 0; b.classList.remove('armed'); b.textContent = '✕';
+    deleteLayer(l);
+  }
+});
+lanesEl.addEventListener('input', e => {
+  if (!e.target.classList.contains('vol')) return;
+  const l = state.layers[+e.target.dataset.l];
+  if (!l) return;
+  l.vol = e.target.value / 100;
+  setRange(e.target, e.target.value);
+  if (ctx) applyLayerMix(l);
+  save();
+});
+window.addEventListener('resize', () => { if (document.body.classList.contains('lyr')) renderLanes(); });
+
+/* ---------- message banner ---------- */
+let toastTimer = 0;
+function toast(msg, kind, ms) {
+  const t = $('toast');
+  t.firstElementChild.textContent = msg;
+  t.className = 'show' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer);
+  if (ms) toastTimer = setTimeout(hideToast, ms);
+}
+function hideToast() { $('toast').className = ''; }
+$('toast').querySelector('button').addEventListener('click', hideToast);
+
 /* ---------------- housekeeping ---------------- */
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('pointerdown', () => initAudio(), { capture: true, once: true });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && playing) { if (ctx) ctx.resume(); keepAwake(true); }
+  if (document.visibilityState === 'hidden') {   // never keep the mic open in the background
+    if (rec.state !== 'idle' && rec.state !== 'finish') cancelRec();
+    releaseMic();
+  }
 });
 document.addEventListener('keydown', e => {   // handy when testing on a laptop
   if (e.code === 'Space') { e.preventDefault(); playing ? stop() : start(); }
+  if (e.code === 'KeyR' && document.body.classList.contains('lyr')) onRecTap();
 });
 
 /* ---------------- offline / install ---------------- */
@@ -557,6 +1161,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 render();
+renderLanes();
+loadLayers();
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 requestAnimationFrame(draw);
 </script>
 </body>
