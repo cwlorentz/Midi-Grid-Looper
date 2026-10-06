@@ -164,13 +164,17 @@ body.mel #roll{display:grid}
 #rmap .oct span{position:relative;top:calc(-15*var(--u));background:rgba(12,13,16,.88);padding:0 2px}
 #rmap .oct.in span{color:var(--text)}
 #rmap .nt{position:absolute;left:calc(8*var(--u));width:calc(16*var(--u));height:3px;background:var(--c);border-radius:1px;transform:translateY(50%)}
-/* ghosts of a playing Grid loop's notes: dashed ring in the pad's colour; it bursts outward as each one sounds */
-.cell.gh{outline:2px dashed color-mix(in srgb,var(--g) 80%,transparent);outline-offset:-2px}
-.cell.gh:not(.on)::after{background:var(--g)}
-.cell.ghit{animation:ghit .5s ease-out}
-@keyframes ghit{0%{outline:3px solid var(--g);outline-offset:-2px}100%{outline:3px solid transparent;outline-offset:calc(10*var(--u))}}
-#rmap .gt{position:absolute;left:calc(28*var(--u));width:calc(14*var(--u));height:3px;background:var(--g);border-radius:1px;transform:translateY(50%);opacity:.7}
-#rmap .gt.hit{opacity:1;height:calc(7*var(--u));box-shadow:0 0 calc(8*var(--u)) var(--g)}
+/* ghosts of a playing Grid loop's notes: a small breathing glow dot in the pad's colour; a thin ring eases out as each one sounds */
+.cell.gh::after{display:block;left:32%;top:32%;width:36%;height:36%;margin:0;border-radius:calc(4*var(--u));background:var(--g);
+  box-shadow:0 0 calc(14*var(--u)) calc(3*var(--u)) color-mix(in srgb,var(--g) 50%,transparent);animation:gbreathe 1.6s ease-in-out infinite alternate}
+@keyframes gbreathe{from{box-shadow:0 0 calc(10*var(--u)) calc(2*var(--u)) color-mix(in srgb,var(--g) 35%,transparent)}
+  to{box-shadow:0 0 calc(16*var(--u)) calc(5*var(--u)) color-mix(in srgb,var(--g) 60%,transparent)}}
+.cell.ghit{animation:ghit .5s cubic-bezier(.33,1,.68,1)}
+@keyframes ghit{0%{outline:1.5px solid color-mix(in srgb,var(--g) 75%,transparent);outline-offset:0}100%{outline:1.5px solid transparent;outline-offset:calc(8*var(--u))}}
+#rmap .gt{position:absolute;left:calc(44*var(--u));width:calc(5*var(--u));height:calc(5*var(--u));margin-left:calc(-2.5*var(--u));background:var(--g);border-radius:50%;transform:translateY(50%)}
+#rmap .gt.hit::after{content:'';position:absolute;inset:0;border-radius:50%;border:1px solid var(--g);animation:gping .5s ease-out forwards}
+@keyframes gping{from{transform:scale(1);opacity:.8}to{transform:scale(4);opacity:0}}
+@media (prefers-reduced-motion:reduce){.cell.gh::after{animation:none}}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:calc(4*var(--u));min-height:0;isolation:isolate}
 .rrow{display:grid;grid-template-columns:calc(42*var(--u)) 1fr;gap:calc(6*var(--u));min-height:0}
 .nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:calc(6*var(--u));font-size:calc(12*var(--u));font-weight:700;color:var(--dim);background:transparent;border-radius:calc(4*var(--u))}
@@ -1413,7 +1417,7 @@ function drawGhosts() {
   }
   if (offHit) showRollMap();
 }
-document.addEventListener('animationend', e => { if (e.animationName === 'ghit') e.target.classList.remove('ghit'); });
+document.addEventListener('animationend', e => { if (e.animationName === 'ghit' && !e.pseudoElement) e.target.classList.remove('ghit'); });
 
 // where the listener is in the transport right now: bar index and fraction of the bar
 function heardPos() {
