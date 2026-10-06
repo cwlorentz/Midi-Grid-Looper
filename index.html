@@ -15,8 +15,9 @@
 :root{
   /* studio graphite: near-black, quiet controls; colour (with an LED glow) only where something is on */
   --bg:#0e0f11; --panel:#15161a; --panel2:#1f2125; --line:#2a2c31; --text:#f2f2f2; --dim:#7d808a;
-  --cell-a:#17181c; --cell-b:#17181c; --ph:rgba(255,255,255,.07); --accent:#ffb340;
+  --cell-a:#17181c; --cell-b:#17181c; --ph:rgba(255,255,255,.11); --accent:#ffb340;
   --dot:#34363d;   /* empty step marker */
+  --tilebg:rgba(255,255,255,.035); /* faint tile behind each empty step */
   --tile:56px;   /* every button in the top bar is a tile of this size */
   --top-h:calc(var(--tile) + 20px);
   --head-w:clamp(236px,18vw,260px);  /* drum track names */
@@ -104,7 +105,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
   grid-template-columns:repeat(4,minmax(0,1fr)) 14px repeat(4,minmax(0,1fr)) 14px repeat(4,minmax(0,1fr)) 14px repeat(4,minmax(0,1fr))}
 .cell:nth-child(5){grid-column:6}.cell:nth-child(9){grid-column:11}.cell:nth-child(13){grid-column:16}
 /* empty step = small dim dot; lit step = glowing pad. The whole cell stays the tap target */
-.cell{border-radius:7px;background:transparent;min-height:0;position:relative}
+.cell{border-radius:7px;background:var(--tilebg);min-height:0;position:relative}
 .cell::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
   background:var(--dot);pointer-events:none}
 .cell.ph{background:var(--ph)}
@@ -158,7 +159,9 @@ body.mel #roll{display:grid}
 .nlab{touch-action:none;cursor:ns-resize}
 #rbody.scrolling .nlab{background:var(--panel2);color:var(--text)}
 #rbody .cell{border-radius:5px}
-.rrow.root .cell:not(.on):not(.tail){background:#1a1b20}
+.rrow.root .cell:not(.on):not(.tail){background:color-mix(in srgb,var(--c) 13%,transparent)}
+.rrow.root .cell:not(.on):not(.tail)::after{background:color-mix(in srgb,var(--c) 45%,var(--dot))}
+.rrow.root .nlab{background:color-mix(in srgb,var(--c) 18%,transparent)}
 #rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a));
   box-shadow:0 0 12px color-mix(in srgb,var(--c) calc(var(--v) * 60%),transparent)}
 #rbody .cell.tail{background:color-mix(in srgb,var(--c) calc(var(--v) * 45%),var(--cell-a));border-radius:0}
