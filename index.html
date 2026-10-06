@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0e0f11">
+<meta name="theme-color" content="#1b1d21">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Touch-first step grid looper">
 <link rel="manifest" href="manifest.webmanifest">
@@ -14,10 +14,10 @@
 <style>
 :root{
   /* studio graphite: near-black, quiet controls; colour (with an LED glow) only where something is on */
-  --bg:#0e0f11; --panel:#15161a; --panel2:#1f2125; --line:#2a2c31; --text:#f2f2f2; --dim:#7d808a;
-  --cell-a:#17181c; --cell-b:#17181c; --ph:rgba(255,255,255,.11); --accent:#ffb340;
-  --dot:#34363d;   /* empty step marker */
-  --tilebg:rgba(255,255,255,.035); /* faint tile behind each empty step */
+  --bg:#1b1d21; --panel:#24262b; --panel2:#2f3137; --line:#3a3d44; --text:#f4f4f5; --dim:#8f929c;
+  --cell-a:#26282d; --cell-b:#26282d; --ph:rgba(255,255,255,.11); --accent:#ffb340;
+  --dot:#4a4d55;   /* empty step marker */
+  --tilebg:rgba(255,255,255,.045); /* faint tile behind each empty step */
   --tile:56px;   /* every button in the top bar is a tile of this size */
   --top-h:calc(var(--tile) + 20px);
   --head-w:clamp(236px,18vw,260px);  /* drum track names */
@@ -109,7 +109,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 .cell::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
   background:var(--dot);pointer-events:none}
 .cell.ph{background:var(--ph)}
-.cell.ph::after{background:#8a8d96}
+.cell.ph::after{background:#9a9da6}
 .cell.on{background:var(--c);
   box-shadow:0 0 20px 3px color-mix(in srgb,var(--c) 65%,transparent),0 0 4px color-mix(in srgb,var(--c) 90%,transparent)}
 .cell.on::after{display:none}
@@ -142,14 +142,14 @@ body.mel #roll{display:grid}
 #rVol{flex:none;width:100%;height:22px;--fill:var(--c)}
 /* range bar: floats over the right of the roll while you scroll, showing the whole note range */
 #roll{position:relative}
-#rmap{position:absolute;right:16px;top:6px;bottom:10px;width:76px;background:rgba(12,13,16,.88);border:1px solid var(--line);
+#rmap{position:absolute;right:16px;top:6px;bottom:10px;width:76px;background:rgba(27,29,33,.9);border:1px solid var(--line);
   border-radius:2px;pointer-events:none;opacity:0;transition:opacity .35s}
 #rmap.show{opacity:1;transition:opacity .08s}
 #rmap .win{position:absolute;left:3px;right:3px;background:color-mix(in srgb,var(--c) 30%,transparent);
   box-shadow:inset 0 0 0 2px var(--c);border-radius:2px}
 #rmap .oct{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--line);font-size:11px;font-weight:700;
   color:var(--dim);text-align:right;padding-right:6px;line-height:1}
-#rmap .oct span{position:relative;top:-15px;background:rgba(12,13,16,.88);padding:0 2px}
+#rmap .oct span{position:relative;top:-15px;background:rgba(27,29,33,.9);padding:0 2px}
 #rmap .oct.in span{color:var(--text)}
 #rmap .nt{position:absolute;left:8px;width:16px;height:3px;background:var(--c);border-radius:1px;transform:translateY(50%)}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:4px;min-height:0}
