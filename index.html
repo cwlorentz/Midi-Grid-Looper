@@ -103,20 +103,24 @@ input[type=range]::-moz-range-thumb{width:calc(16*var(--u));height:calc(28*var(-
 .head .vol::-webkit-slider-runnable-track{height:3px}
 .head .vol::-webkit-slider-thumb{width:calc(12*var(--u));height:calc(16*var(--u));margin-top:calc((3px - 16*var(--u)) / 2);border-radius:calc(4*var(--u));background:#c9cbd1}
 /* 16 steps plus a thin spacer column between each group of 4, so every step is the same width */
-.steps{display:grid;column-gap:calc(6*var(--u));touch-action:none;min-height:0;
+.steps{display:grid;column-gap:calc(6*var(--u));touch-action:none;min-height:0;isolation:isolate;
   grid-template-columns:repeat(4,minmax(0,1fr)) calc(14*var(--u)) repeat(4,minmax(0,1fr)) calc(14*var(--u)) repeat(4,minmax(0,1fr)) calc(14*var(--u)) repeat(4,minmax(0,1fr))}
 .cell:nth-child(5){grid-column:6}.cell:nth-child(9){grid-column:11}.cell:nth-child(13){grid-column:16}
 /* empty step = small dim dot; lit step = glowing pad. The whole cell stays the tap target */
 .cell{border-radius:calc(7*var(--u));background:var(--tilebg);min-height:0;position:relative}
+/* The glow lives on ::before at z-index -1 so every glow paints beneath every pad. On the pad itself, a lit
+   neighbour's glow would paint over this pad's edge (cells are positioned, so they paint in DOM order), which
+   made runs of lit steps look sharper on one side and lighter on the other. .steps/#rbody isolate the stack. */
+.cell::before{content:'';position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none}
 .cell::after{content:'';position:absolute;left:50%;top:50%;width:calc(6*var(--u));height:calc(6*var(--u));margin:-3px 0 0 -3px;border-radius:50%;
   background:var(--dot);pointer-events:none}
 .cell.ph{background:var(--ph)}
 .cell.ph::after{background:#8a8d96}
-.cell.on{background:var(--c);
-  box-shadow:0 0 calc(20*var(--u)) 3px color-mix(in srgb,var(--c) 65%,transparent),0 0 calc(4*var(--u)) color-mix(in srgb,var(--c) 90%,transparent)}
+.cell.on{background:var(--c)}
+.cell.on::before{box-shadow:0 0 calc(20*var(--u)) 3px color-mix(in srgb,var(--c) 65%,transparent),0 0 calc(4*var(--u)) color-mix(in srgb,var(--c) 90%,transparent)}
 .cell.on::after{display:none}
-.cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff);
-  box-shadow:0 0 calc(22*var(--u)) calc(4*var(--u)) color-mix(in srgb,var(--c) 80%,transparent),0 0 calc(4*var(--u)) #fff}
+.cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff)}
+.cell.on.ph::before{box-shadow:0 0 calc(22*var(--u)) calc(4*var(--u)) color-mix(in srgb,var(--c) 80%,transparent),0 0 calc(4*var(--u)) #fff}
 .row.silent .steps,.row.silent .name{opacity:.35}
 
 /* ---------- piano roll (shown in place of the drum grid) ---------- */
@@ -154,7 +158,7 @@ body.mel #roll{display:grid}
 #rmap .oct span{position:relative;top:calc(-15*var(--u));background:rgba(12,13,16,.88);padding:0 2px}
 #rmap .oct.in span{color:var(--text)}
 #rmap .nt{position:absolute;left:calc(8*var(--u));width:calc(16*var(--u));height:3px;background:var(--c);border-radius:1px;transform:translateY(50%)}
-#rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:calc(4*var(--u));min-height:0}
+#rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:calc(4*var(--u));min-height:0;isolation:isolate}
 .rrow{display:grid;grid-template-columns:calc(42*var(--u)) 1fr;gap:calc(6*var(--u));min-height:0}
 .nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:calc(6*var(--u));font-size:calc(12*var(--u));font-weight:700;color:var(--dim);background:transparent;border-radius:calc(4*var(--u))}
 .rrow.root .nlab{color:var(--c)}
@@ -164,12 +168,13 @@ body.mel #roll{display:grid}
 .rrow.root .cell:not(.on):not(.tail){background:color-mix(in srgb,var(--c) 13%,transparent)}
 .rrow.root .cell:not(.on):not(.tail)::after{background:color-mix(in srgb,var(--c) 45%,var(--dot))}
 .rrow.root .nlab{background:color-mix(in srgb,var(--c) 18%,transparent)}
-#rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a));
-  box-shadow:0 0 calc(12*var(--u)) color-mix(in srgb,var(--c) calc(var(--v) * 60%),transparent)}
+#rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a))}
+#rbody .cell.on::before{box-shadow:0 0 calc(12*var(--u)) color-mix(in srgb,var(--c) calc(var(--v) * 60%),transparent)}
 #rbody .cell.tail{background:color-mix(in srgb,var(--c) calc(var(--v) * 45%),var(--cell-a));border-radius:0}
 #rbody .cell.tail::after{display:none}
 #rbody .cell.ph:not(.on):not(.tail){background:var(--ph)}
-#rbody .cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff);box-shadow:0 0 calc(18*var(--u)) 3px color-mix(in srgb,var(--c) 75%,transparent)}
+#rbody .cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff)}
+#rbody .cell.on.ph::before{box-shadow:0 0 calc(18*var(--u)) 3px color-mix(in srgb,var(--c) 75%,transparent)}
 #rbody .cell.tail.ph{box-shadow:inset 0 0 0 2px #fff}
 #rbody .cell.off{opacity:.2}
 #roll.silent #rbody{opacity:.35}
