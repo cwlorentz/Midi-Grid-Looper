@@ -94,7 +94,7 @@ input[type=range]::-moz-range-thumb{width:calc(16*var(--u));height:calc(28*var(-
 .head .name::before{content:'';flex:none;width:calc(8*var(--u));height:calc(8*var(--u));border-radius:50%;background:var(--c);
   box-shadow:0 0 calc(8*var(--u)) 1px color-mix(in srgb,var(--c) 70%,transparent)}
 .name:active{transform:none}
-.mute,.solo{grid-row:1/-1;width:var(--ms);height:100%;max-height:var(--tile);align-self:center;font-size:calc(17*var(--u));
+.mute,.solo{grid-row:1/-1;height:100%;max-height:min(var(--tile),var(--ms));aspect-ratio:1;place-self:center;font-size:calc(17*var(--u));
   background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 .mute{grid-column:2}.solo{grid-column:3}
 .mute.on{background:#e5393b;color:#fff;box-shadow:0 0 calc(12*var(--u)) 1px rgba(229,57,59,.5)}
@@ -103,9 +103,12 @@ input[type=range]::-moz-range-thumb{width:calc(16*var(--u));height:calc(28*var(-
 .head .vol::-webkit-slider-runnable-track{height:3px}
 .head .vol::-webkit-slider-thumb{width:calc(12*var(--u));height:calc(16*var(--u));margin-top:calc((3px - 16*var(--u)) / 2);border-radius:calc(4*var(--u));background:#c9cbd1}
 /* 16 steps plus a thin spacer column between each group of 4, so every step is the same width */
-.steps{display:grid;column-gap:calc(6*var(--u));touch-action:none;min-height:0;isolation:isolate;
+.steps{display:grid;column-gap:calc(6*var(--u));touch-action:none;min-height:0;isolation:isolate;container-type:size;
   grid-template-columns:repeat(4,minmax(0,1fr)) calc(14*var(--u)) repeat(4,minmax(0,1fr)) calc(14*var(--u)) repeat(4,minmax(0,1fr)) calc(14*var(--u)) repeat(4,minmax(0,1fr))}
 .cell:nth-child(5){grid-column:6}.cell:nth-child(9){grid-column:11}.cell:nth-child(13){grid-column:16}
+/* tiles stay square on any screen shape: the side that has room to spare shrinks to match, centred in its slot.
+   The slot around a tile still takes taps (see cellNear) */
+.steps>.cell{width:min(100%,100cqh);aspect-ratio:1;place-self:center}
 /* empty step = small dim dot; lit step = glowing pad. The whole cell stays the tap target */
 .cell{border-radius:calc(7*var(--u));background:var(--tilebg);min-height:0;position:relative}
 /* The glow lives on ::before at z-index -1 so every glow paints beneath every pad. On the pad itself, a lit
@@ -775,6 +778,21 @@ function draw() {
 
 /* ---------------- grid touch: tap or drag along a row to paint ---------------- */
 const painters = new Map();
+// the cell under a finger, or the nearest cell in the same row when the finger is in the space beside a square tile
+function cellNear(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return null;
+  const c = el.closest('.cell');
+  if (c) return c;
+  const st = el.closest('.steps');
+  if (!st) return null;
+  let best = null, bd = Infinity;
+  for (const k of st.children) {
+    const r = k.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - x);
+    if (d < bd) { bd = d; best = k; }
+  }
+  return best;
+}
 function setCell(c, on) {
   const t = +c.dataset.t, s = +c.dataset.s;
   if (state.tracks[t].steps[s] === on) return;
@@ -783,7 +801,8 @@ function setCell(c, on) {
   save();
 }
 gridEl.addEventListener('pointerdown', e => {
-  const c = e.target.closest('.cell');
+  if (!e.target.closest('.steps')) return;
+  const c = cellNear(e.clientX, e.clientY);
   if (!c) return;
   e.preventDefault();
   initAudio();
@@ -797,8 +816,7 @@ gridEl.addEventListener('pointerdown', e => {
 gridEl.addEventListener('pointermove', e => {
   const p = painters.get(e.pointerId);
   if (!p) return;
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  const c = el && el.closest('.cell');
+  const c = cellNear(e.clientX, e.clientY);
   if (c && c !== p.last && +c.dataset.t === p.row) { p.last = c; setCell(c, p.mode); }
 });
 for (const ev of ['pointerup', 'pointercancel']) gridEl.addEventListener(ev, e => painters.delete(e.pointerId));
@@ -1033,7 +1051,7 @@ function startRollScroll(e) {
 const avgY = () => { let t = 0; for (const y of rollScroll.pts.values()) t += y; return t / rollScroll.pts.size; };
 rbody.addEventListener('pointerdown', e => {
   if (rollScroll || e.target.closest('.nlab')) { e.preventDefault(); startRollScroll(e); return; }
-  const c = e.target.closest('.cell');
+  const c = e.target.closest('.steps') && cellNear(e.clientX, e.clientY);
   if (!c) return;
   e.preventDefault();
   if (rollPainters.size) {   // a second finger: this is a two-finger swipe, not painting
@@ -1106,8 +1124,8 @@ rbody.addEventListener('pointermove', e => {
   const p = rollPainters.get(e.pointerId);
   if (!p) return;
   p.y = e.clientY;
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  const c = el && el.closest('#rbody .cell');
+  const c = cellNear(e.clientX, e.clientY);
+  if (c && !c.closest('#rbody')) return;
   if (!c || +c.dataset.s === p.last) return;
   if (p.paint) {
     if (+c.dataset.r === p.r) { p.last = +c.dataset.s; paintRoll(p, p.last); }
