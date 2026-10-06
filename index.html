@@ -164,6 +164,13 @@ body.mel #roll{display:grid}
 #rmap .oct span{position:relative;top:calc(-15*var(--u));background:rgba(12,13,16,.88);padding:0 2px}
 #rmap .oct.in span{color:var(--text)}
 #rmap .nt{position:absolute;left:calc(8*var(--u));width:calc(16*var(--u));height:3px;background:var(--c);border-radius:1px;transform:translateY(50%)}
+/* ghosts of a playing Grid loop's notes: dashed ring in the pad's colour; it bursts outward as each one sounds */
+.cell.gh{outline:2px dashed color-mix(in srgb,var(--g) 80%,transparent);outline-offset:-2px}
+.cell.gh:not(.on)::after{background:var(--g)}
+.cell.ghit{animation:ghit .5s ease-out}
+@keyframes ghit{0%{outline:3px solid var(--g);outline-offset:-2px}100%{outline:3px solid transparent;outline-offset:calc(10*var(--u))}}
+#rmap .gt{position:absolute;left:calc(28*var(--u));width:calc(14*var(--u));height:3px;background:var(--g);border-radius:1px;transform:translateY(50%);opacity:.7}
+#rmap .gt.hit{opacity:1;height:calc(7*var(--u));box-shadow:0 0 calc(8*var(--u)) var(--g)}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:calc(4*var(--u));min-height:0;isolation:isolate}
 .rrow{display:grid;grid-template-columns:calc(42*var(--u)) 1fr;gap:calc(6*var(--u));min-height:0}
 .nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:calc(6*var(--u));font-size:calc(12*var(--u));font-weight:700;color:var(--dim);background:transparent;border-radius:calc(4*var(--u))}
@@ -646,14 +653,14 @@ function schedule() {
     const t = nextTime + swing;
     if (curStep === 0) onBar(nextTime);
     for (let i = 0; i < TRACKS.length; i++) {
-      if (state.tracks[i].steps[curStep] && audible(i)) VOICES[TRACKS[i].voice](t, trackGains[i], 1);
+      if (state.tracks[i].steps[curStep] && audible(i)) { VOICES[TRACKS[i].voice](t, trackGains[i], 1); logNote(-1, i, curStep, 1); }
     }
     // each instrument loops over its own length, so a 12-step bass drifts against 16-step drums
     state.mel.forEach((tr, j) => {
       if (!isOn(tr)) return;
       const s = absStep % tr.len;
       for (const n of tr.notes) {
-        if (n.s === s) playNote(MEL[j].voice, t, melGains[j], snap(n.r) + state.key.root, n.v, n.l * sd);
+        if (n.s === s) { playNote(MEL[j].voice, t, melGains[j], snap(n.r) + state.key.root, n.v, n.l * sd); logNote(j, snap(n.r), s, n.l); }
       }
     });
     queue.push({ step: curStep, abs: absStep, time: t });
@@ -776,6 +783,7 @@ function draw() {
     if (heardAbs >= 0 && state.view !== 'drums') setRollPlayhead(heardAbs % state.mel[state.view].len);
   }
   drawLayers();
+  drawGhosts();
   mixUi();
   requestAnimationFrame(draw);
 }
@@ -937,6 +945,7 @@ function setView(v) {
 }
 
 let rollRows = [], rollPh = -1, editMode = 'note';
+let ghostEls = [], ghostSig = '', ghostTicks = [];   // see drawGhosts
 const curMel = () => state.mel[state.view];
 // the roll shows N+1 scale notes (an octave plus one) starting at scale degree rollBase();
 // oct is the octave of the bottom row and deg how many scale notes above that octave's root it starts
@@ -962,6 +971,12 @@ function showRollMap() {
     if (k < 0 || d < 0 || d > top || seen.has(d)) continue;
     seen.add(d); h += `<div class="nt" style="bottom:${(100 * d / top).toFixed(2)}%"></div>`;
   }
+  // notes a playing Grid loop recorded, in the pad's colour; the ones sounding right now flash
+  for (const g of ghostTicks) {
+    const r = snap(g.r), k = iv.indexOf(mod(r, 12)), d = (Math.floor(r / 12) - 1) * N + k;
+    if (k < 0 || d < 0 || d > top) continue;
+    h += `<div class="gt${g.hit ? ' hit' : ''}" style="bottom:${(100 * d / top).toFixed(2)}%;--g:${g.color}"></div>`;
+  }
   map.innerHTML = h; map.classList.add('show');
   clearTimeout(rmapHide);
   if (!rollScroll) rmapHide = setTimeout(() => map.classList.remove('show'), 900);
@@ -986,7 +1001,7 @@ function buildRoll() {
     rbody.appendChild(row);
     return { r, cells: cs };
   });
-  rollPh = -1;
+  rollPh = -1; ghostSig = '';
   renderRoll();
 }
 function renderRoll() {
@@ -1268,7 +1283,7 @@ async function dbDo(mode, fn) {
 }
 function storeLayer(l) {
   const b = layerAudio.get(l.id);
-  return dbDo('readwrite', st => st.put({ sr: b.sampleRate, data: b.getChannelData(0) }, l.id))
+  return dbDo('readwrite', st => st.put({ sr: b.sampleRate, data: b.getChannelData(0), ev: layerEv.get(l.id) || [] }, l.id))
     .catch(() => toast('This loop plays now but could not be saved (storage full or blocked).', 'info'));
 }
 async function loadLayers() {
@@ -1280,6 +1295,7 @@ async function loadLayers() {
       const b = new AudioBuffer({ length: r.data.length, sampleRate: r.sr, numberOfChannels: 1 });
       b.copyToChannel(r.data, 0);
       layerAudio.set(l.id, b);
+      if (Array.isArray(r.ev)) layerEv.set(l.id, r.ev);
       keep.push(l);
     } catch (e) {}
   }
@@ -1346,10 +1362,59 @@ function deleteLayer(l) {
   const g = layerGains.get(l.id);
   if (g) { g.disconnect(); layerGains.delete(l.id); }
   layerAudio.delete(l.id);
+  layerEv.delete(l.id);
   state.layers = state.layers.filter(x => x !== l);
   dbDo('readwrite', st => st.delete(l.id)).catch(() => {});
   save(); renderPads();
 }
+/* ---------- ghosts: a Grid loop keeps the notes it recorded. While it plays, they pulse on their cells in the
+   pad's colour, even if they were cleared from the grid since; off-screen roll notes flash on the range bar ---------- */
+const layerEv = new Map();   // id -> [loopBar, step, kind, a, col, len]: kind -1 = drum track a, else instrument kind with pitch a
+const noteRing = [];         // the notes just scheduled, so a take that starts mid-lookahead still gets its first steps
+function logNote(kind, a, col, len) {
+  const e = [barCount, curStep, kind, a, col, len];
+  if (rec.state === 'rec' && rec.src === 'grid') rec.ev.push(e);
+  else { noteRing.push(e); if (noteRing.length > 1000) noteRing.shift(); }
+}
+function addEv(list, ev, loopBar) {
+  const out = list.slice(), seen = new Set(out.map(e => e.join()));
+  for (const e of ev) {
+    const g = [loopBar(e)].concat(e.slice(1));
+    if (!seen.has(g.join())) { seen.add(g.join()); out.push(g); }
+  }
+  return out;
+}
+function drawGhosts() {
+  const live = playing && heardAbs >= 0 ? state.layers.filter(l => !l.mute && layerSrc.has(l.id) && (layerEv.get(l.id) || []).length) : [];
+  const idx = Math.floor(heardAbs / STEPS), q = mod(heardAbs, STEPS), view = state.view;
+  const sig = live.length ? live.map(l => l.id + ':' + mod(idx - l.phase, l.bars) + ':' + layerEv.get(l.id).length).join() + '|' + q + '|' + view : '';
+  if (sig === ghostSig) return;
+  ghostSig = sig;
+  for (const c of ghostEls) c.classList.remove('gh');
+  ghostEls = []; ghostTicks = [];
+  const at = view === 'drums' ? null : new Map(rollRows.map((row, k) => [row.r, k]));
+  let offHit = false;
+  for (const l of live) {
+    const lb = mod(idx - l.phase, l.bars);
+    for (const [b, st, kind, a, col] of layerEv.get(l.id)) {
+      let c = null;
+      if (view === 'drums') { if (kind === -1 && b === lb) c = cells[a][col]; }
+      else if (kind === view) {
+        const hit = b === lb && st === q, k = at.get(snap(a));
+        ghostTicks.push({ r: a, color: l.color, hit });
+        if (b === lb && k != null) c = rollRows[k].cells[col];
+        else if (hit && k == null) offHit = true;
+      }
+      if (!c) continue;
+      c.style.setProperty('--g', l.color);
+      c.classList.add('gh'); ghostEls.push(c);
+      if (st === q) { c.classList.remove('ghit'); void c.offsetWidth; c.classList.add('ghit'); }
+    }
+  }
+  if (offHit) showRollMap();
+}
+document.addEventListener('animationend', e => { if (e.animationName === 'ghit') e.target.classList.remove('ghit'); });
+
 // where the listener is in the transport right now: bar index and fraction of the bar
 function heardPos() {
   if (!playing || !ctx) return null;
@@ -1464,7 +1529,7 @@ const latencyMs = () => state.rec.latency != null ? state.rec.latency : autoLate
 /* ---------- recording: one take at a time, either a new loop or an overdub on an existing one ---------- */
 // state: idle | prep (opening mic) | count | wait (for the bar line) | rec | finish | calib
 const rec = { state: 'idle', mode: 'new', slot: -1, layerId: null, src: 'mic', bars: 2,
-  startBar: 0, endBar: null, offset: 0, cap: null };
+  startBar: 0, endBar: null, offset: 0, cap: null, ev: [] };
 
 function click(t, accent) {
   const o = osc('square', accent ? 1600 : 1100), g = ctx.createGain();
@@ -1477,10 +1542,12 @@ function beginRec(t) {
   rec.startBar = barCount;
   rec.endBar = rec.mode === 'new' && rec.bars ? barCount + rec.bars : null;
   rec.cap = captureStart(rec.src === 'mic' ? micCap : gridCap, frameAt(t));
+  rec.ev = noteRing.filter(e => e[0] === barCount);   // this bar's first steps may already be queued
 }
 function endRec(t, idx) {
   rec.state = 'finish';
-  const meta = { mode: rec.mode, slot: rec.slot, layerId: rec.layerId, src: rec.src, startBar: rec.startBar, bars: idx - rec.startBar };
+  const meta = { mode: rec.mode, slot: rec.slot, layerId: rec.layerId, src: rec.src, startBar: rec.startBar, bars: idx - rec.startBar,
+    ev: rec.src === 'grid' ? rec.ev.filter(e => e[0] >= rec.startBar && e[0] < idx) : [] };
   rec.cap.stop(frameAt(t));
   rec.cap.done.then(data => {
     rec.state = 'idle'; rec.cap = null;
@@ -1569,6 +1636,7 @@ function finishTake(data, meta) {
   const b = ctx.createBuffer(1, data.length, sr);
   b.copyToChannel(data, 0);
   layerAudio.set(l.id, b);
+  layerEv.set(l.id, addEv([], meta.ev, e => e[0] - meta.startBar));
   state.layers.push(l);
   save(); renderPads();
   layerJoin(l);
@@ -1593,6 +1661,7 @@ function finishDub(data, meta) {
   const b = ctx.createBuffer(1, d.length, old.sampleRate);
   b.copyToChannel(d, 0);
   layerAudio.set(l.id, b);
+  if (meta.ev.length) layerEv.set(l.id, addEv(layerEv.get(l.id) || [], meta.ev, e => mod(e[0] - l.phase, l.bars)));
   l.v = (l.v || 0) + 1;
   save(); renderPads();
   layerJoin(l);
