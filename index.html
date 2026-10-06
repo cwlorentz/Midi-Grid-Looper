@@ -304,7 +304,8 @@ body.mel #roll{display:grid}
     <div class="rh"><button id="lenDown" aria-label="Shorter pattern">−</button>
       <div class="rval" id="lenVal" data-cap="Steps"></div><button id="lenUp" aria-label="Longer pattern">+</button></div>
     <div class="rh"><label>Tap</label><button class="txt wide seg" data-edit="note">Note</button>
-      <button class="txt wide seg" data-edit="vel" aria-label="Tap a note to change how loud it is">Vel</button></div>
+      <button class="txt wide seg" data-edit="vel" aria-label="Tap a note to change how loud it is">Vel</button>
+      <button class="txt wide seg" data-edit="len" aria-label="Drag a note to the right to make it longer">Len</button></div>
   </div>
   <div id="rbody"></div>
   <div id="rmap" aria-hidden="true"><div class="win"></div></div>
@@ -1011,7 +1012,8 @@ function noteAt(r, s, startOnly) {
   return tr.notes.find(n => snap(n.r) === r && (n.s === s || (!startOnly && s > n.s && s < n.s + n.l)));
 }
 
-/* ---------- roll touch: tap to add, drag right to lengthen, tap a note to remove ---------- */
+/* ---------- roll touch: Note mode taps or drags along a row to add/remove notes, like the drum grid;
+   Len mode drags right to lengthen (a tap there removes); Vel mode taps a note to change how loud it is ---------- */
 const rollPainters = new Map();
 // swipe up/down to move through the notes: one finger on the note names, or two fingers anywhere.
 // Dragging down shows higher notes, like scrolling a page.
@@ -1037,8 +1039,14 @@ rbody.addEventListener('pointerdown', e => {
   if (rollPainters.size) {   // a second finger: this is a two-finger swipe, not painting
     const now = performance.now();
     for (const [id, p] of rollPainters) {
-      // take back a note the first finger only just placed
-      if (p.isNew && p.note.l === 1 && now - p.t < 500) { const tr = curMel(); tr.notes = tr.notes.filter(n => n !== p.note); }
+      // take back what the first finger only just painted
+      if (now - p.t < 500) {
+        const tr = curMel();
+        if (p.paint) {
+          if (p.add) tr.notes = tr.notes.filter(n => !p.done.includes(n));
+          else tr.notes.push(...p.done);
+        } else if (p.isNew && p.note.l === 1) tr.notes = tr.notes.filter(n => n !== p.note);
+      }
       rollPainters.delete(id);
       startRollScroll({ pointerId: id, clientY: p.y });
     }
@@ -1058,6 +1066,12 @@ rbody.addEventListener('pointerdown', e => {
     renderRoll(); save();
     return;
   }
+  if (editMode === 'note') {   // paint: the first cell decides add or remove, then drag along the row
+    const p = { paint: true, add: !hit, r, last: s, done: [], t: performance.now(), y: e.clientY };
+    rollPainters.set(e.pointerId, p);
+    paintRoll(p, s);
+    return;
+  }
   if (hit) {   // remove on release, unless the finger drags to resize it
     rollPainters.set(e.pointerId, { note: hit, r, last: s, moved: false, y: e.clientY });
     return;
@@ -1068,6 +1082,21 @@ rbody.addEventListener('pointerdown', e => {
   auditionNote(r, n.v);
   renderRoll(); save();
 });
+function paintRoll(p, s) {
+  const tr = curMel();
+  if (s >= tr.len) return;
+  const hit = noteAt(p.r, s, false);
+  if (p.add) {
+    if (hit) return;
+    const n = { s, r: p.r, l: 1, v: 0.75 };
+    tr.notes.push(n); p.done.push(n);
+    if (p.done.length === 1) auditionNote(p.r, n.v);
+  } else {
+    if (!hit) return;
+    tr.notes = tr.notes.filter(n => n !== hit); p.done.push(hit);
+  }
+  renderRoll(); save();
+}
 rbody.addEventListener('pointermove', e => {
   if (rollScroll && rollScroll.pts.has(e.pointerId)) {
     rollScroll.pts.set(e.pointerId, e.clientY);
@@ -1080,6 +1109,10 @@ rbody.addEventListener('pointermove', e => {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const c = el && el.closest('#rbody .cell');
   if (!c || +c.dataset.s === p.last) return;
+  if (p.paint) {
+    if (+c.dataset.r === p.r) { p.last = +c.dataset.s; paintRoll(p, p.last); }
+    return;
+  }
   p.last = +c.dataset.s; p.moved = true;
   const l = Math.max(1, Math.min(p.last - p.note.s + 1, curMel().len - p.note.s));
   if (l !== p.note.l) { p.note.l = l; renderRoll(); save(); }
@@ -1092,7 +1125,7 @@ for (const ev of ['pointerup', 'pointercancel']) rbody.addEventListener(ev, e =>
   }
   const p = rollPainters.get(e.pointerId);
   rollPainters.delete(e.pointerId);
-  if (p && !p.moved && ev === 'pointerup') {
+  if (p && !p.paint && !p.moved && ev === 'pointerup') {
     const tr = curMel();
     tr.notes = tr.notes.filter(n => n !== p.note);
     renderRoll(); save();
