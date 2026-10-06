@@ -125,6 +125,18 @@ body.mel #roll{display:grid}
 /* while a value is being swiped, light it in the track colour */
 .rval.swiping,#scaleBtn.swiping{box-shadow:inset 0 0 0 2px var(--c);color:var(--c)}
 #rVol{flex:none;width:100%;height:22px;--fill:var(--c)}
+/* range bar: floats over the right of the roll while you scroll, showing the whole note range */
+#roll{position:relative}
+#rmap{position:absolute;right:16px;top:6px;bottom:10px;width:76px;background:rgba(12,13,16,.88);border:1px solid var(--line);
+  border-radius:2px;pointer-events:none;opacity:0;transition:opacity .35s}
+#rmap.show{opacity:1;transition:opacity .08s}
+#rmap .win{position:absolute;left:3px;right:3px;background:color-mix(in srgb,var(--c) 30%,transparent);
+  box-shadow:inset 0 0 0 2px var(--c);border-radius:2px}
+#rmap .oct{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--line);font-size:11px;font-weight:700;
+  color:var(--dim);text-align:right;padding-right:6px;line-height:1}
+#rmap .oct span{position:relative;top:-15px;background:rgba(12,13,16,.88);padding:0 2px}
+#rmap .oct.in span{color:var(--text)}
+#rmap .nt{position:absolute;left:8px;width:16px;height:3px;background:var(--c);border-radius:1px;transform:translateY(50%)}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:4px;min-height:0}
 .rrow{display:grid;grid-template-columns:42px 1fr;gap:6px;min-height:0}
 .nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:12px;font-weight:700;color:var(--dim);background:var(--panel)}
@@ -258,6 +270,7 @@ body.mel #roll{display:grid}
       <button class="txt wide seg" data-edit="vel" aria-label="Tap a note to change how loud it is">Vel</button></div>
   </div>
   <div id="rbody"></div>
+  <div id="rmap" aria-hidden="true"><div class="win"></div></div>
 </main>
 <section id="deck">
   <div id="deckCtl">
@@ -865,7 +878,25 @@ function setRollBase(d) {
   d = Math.max(0, Math.min(7 * N, d));
   if (d === rollBase()) return;
   tr.oct = Math.floor(d / N); tr.deg = d % N;
-  buildRoll(); save();
+  buildRoll(); save(); showRollMap();
+}
+// the range bar: degree 0 (bottom) .. 8N (top); octave lines at each root, ticks where notes are
+let rmapHide = 0;
+function showRollMap() {
+  const map = $('rmap'), iv = scaleIv(), N = iv.length, top = 8 * N, d0 = rollBase(), tr = curMel();
+  const y = d => (100 * (1 - d / top)).toFixed(2) + '%';
+  let h = `<div class="win" style="top:${y(d0 + N + 0.5)};bottom:${(100 * (d0 - 0.5) / top).toFixed(2)}%"></div>`;
+  for (let o = 0; o < 8; o++) h += `<div class="oct${o * N >= d0 && o * N <= d0 + N ? ' in' : ''}" style="top:${y(o * N)}"><span>${noteName(12 * (o + 1) + state.key.root)}</span></div>`;
+  const seen = new Set();
+  for (const n of tr.notes) {
+    const r = snap(n.r), k = iv.indexOf(mod(r, 12));
+    const d = (Math.floor(r / 12) - 1) * N + k;
+    if (k < 0 || d < 0 || d > top || seen.has(d)) continue;
+    seen.add(d); h += `<div class="nt" style="bottom:${(100 * d / top).toFixed(2)}%"></div>`;
+  }
+  map.innerHTML = h; map.classList.add('show');
+  clearTimeout(rmapHide);
+  if (!rollScroll) rmapHide = setTimeout(() => map.classList.remove('show'), 900);
 }
 function buildRoll() {
   const j = state.view, iv = scaleIv(), N = iv.length, d0 = rollBase();
@@ -954,6 +985,7 @@ function startRollScroll(e) {
     rollScroll = { pts: new Map(), y0: 0, d0: rollBase(), rowH };
     rbody.classList.add('scrolling');
   }
+  showRollMap();
   rbody.setPointerCapture(e.pointerId);
   rollScroll.pts.set(e.pointerId, e.clientY);
   // re-anchor so adding a finger doesn't jump
@@ -1018,7 +1050,7 @@ rbody.addEventListener('pointermove', e => {
 for (const ev of ['pointerup', 'pointercancel']) rbody.addEventListener(ev, e => {
   if (rollScroll && rollScroll.pts.delete(e.pointerId)) {
     if (rollScroll.pts.size) { rollScroll.y0 = avgY(); rollScroll.d0 = rollBase(); }
-    else { rollScroll = null; rbody.classList.remove('scrolling'); }
+    else { rollScroll = null; rbody.classList.remove('scrolling'); showRollMap(); }
     return;
   }
   const p = rollPainters.get(e.pointerId);
@@ -1047,7 +1079,7 @@ function setScale(d) {
   state.key.scale = SCALES[mod(k + d, SCALES.length)][0];
   buildRoll(); save();
 }
-function setOct(d) { const tr = curMel(); tr.oct = Math.max(0, Math.min(7, tr.oct + d)); buildRoll(); save(); }
+function setOct(d) { const tr = curMel(); tr.oct = Math.max(0, Math.min(7, tr.oct + d)); buildRoll(); save(); showRollMap(); }
 onTap('octDown', () => setOct(-1));
 onTap('octUp', () => setOct(1));
 function setLen(d) { const tr = curMel(); tr.len = Math.max(1, Math.min(STEPS, tr.len + d)); renderRoll(); save(); }
