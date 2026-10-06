@@ -129,6 +129,8 @@ body.mel #roll{display:grid}
 .rrow{display:grid;grid-template-columns:42px 1fr;gap:6px;min-height:0}
 .nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:12px;font-weight:700;color:var(--dim);background:var(--panel)}
 .rrow.root .nlab{color:var(--c)}
+.nlab{touch-action:none;cursor:ns-resize}
+#rbody.scrolling .nlab{background:var(--panel2);color:var(--text)}
 .rrow.root .cell:not(.on):not(.tail){background:#2a2e38}
 .rrow.root .cell.gb:not(.on):not(.tail){background:#313643}
 #rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a))}
@@ -855,11 +857,20 @@ function setView(v) {
 
 let rollRows = [], rollPh = -1, editMode = 'note';
 const curMel = () => state.mel[state.view];
-// one row per scale note across the track's octave, top note = root an octave up
+// the roll shows N+1 scale notes (an octave plus one) starting at scale degree rollBase();
+// oct is the octave of the bottom row and deg how many scale notes above that octave's root it starts
+function rollBase() { const tr = curMel(), N = scaleIv().length; return Math.max(0, Math.min(7 * N, tr.oct * N + (tr.deg || 0))); }
+function setRollBase(d) {
+  const tr = curMel(), N = scaleIv().length;
+  d = Math.max(0, Math.min(7 * N, d));
+  if (d === rollBase()) return;
+  tr.oct = Math.floor(d / N); tr.deg = d % N;
+  buildRoll(); save();
+}
 function buildRoll() {
-  const j = state.view, tr = curMel(), iv = scaleIv(), base = 12 * (tr.oct + 1);
+  const j = state.view, iv = scaleIv(), N = iv.length, d0 = rollBase();
   rollEl.style.setProperty('--c', MEL[j].color);
-  const pitches = iv.map(x => base + x).concat(base + 12).reverse();
+  const pitches = Array.from({ length: N + 1 }, (_, k) => 12 * (Math.floor((d0 + k) / N) + 1) + iv[(d0 + k) % N]).reverse();
   rbody.style.setProperty('--n', pitches.length);
   rbody.innerHTML = '';
   rollRows = pitches.map(r => {
@@ -905,7 +916,7 @@ function renderRoll() {
   $('keyVal').textContent = NOTE_NAMES[state.key.root];
   $('scaleBtn').textContent = state.key.scale;
   // notes outside the visible octave still play; arrows say which way they are
-  const lo = 12 * (tr.oct + 1), hi = lo + 12;
+  const lo = rollRows[rollRows.length - 1].r, hi = rollRows[0].r;
   const up = tr.notes.some(n => snap(n.r) > hi), down = tr.notes.some(n => snap(n.r) < lo);
   $('octVal').textContent = (down ? '▾' : '') + tr.oct + (up ? '▴' : '');
   $('lenVal').textContent = tr.len;
@@ -934,10 +945,37 @@ function noteAt(r, s, startOnly) {
 
 /* ---------- roll touch: tap to add, drag right to lengthen, tap a note to remove ---------- */
 const rollPainters = new Map();
+// swipe up/down to move through the notes: one finger on the note names, or two fingers anywhere.
+// Dragging down shows higher notes, like scrolling a page.
+let rollScroll = null;
+function startRollScroll(e) {
+  if (!rollScroll) {
+    const rowH = rbody.getBoundingClientRect().height / rollRows.length;
+    rollScroll = { pts: new Map(), y0: 0, d0: rollBase(), rowH };
+    rbody.classList.add('scrolling');
+  }
+  rbody.setPointerCapture(e.pointerId);
+  rollScroll.pts.set(e.pointerId, e.clientY);
+  // re-anchor so adding a finger doesn't jump
+  rollScroll.y0 = avgY(); rollScroll.d0 = rollBase();
+}
+const avgY = () => { let t = 0; for (const y of rollScroll.pts.values()) t += y; return t / rollScroll.pts.size; };
 rbody.addEventListener('pointerdown', e => {
+  if (rollScroll || e.target.closest('.nlab')) { e.preventDefault(); startRollScroll(e); return; }
   const c = e.target.closest('.cell');
   if (!c) return;
   e.preventDefault();
+  if (rollPainters.size) {   // a second finger: this is a two-finger swipe, not painting
+    const now = performance.now();
+    for (const [id, p] of rollPainters) {
+      // take back a note the first finger only just placed
+      if (p.isNew && p.note.l === 1 && now - p.t < 500) { const tr = curMel(); tr.notes = tr.notes.filter(n => n !== p.note); }
+      rollPainters.delete(id);
+      startRollScroll({ pointerId: id, clientY: p.y });
+    }
+    startRollScroll(e); renderRoll(); save();
+    return;
+  }
   initAudio();
   if (c.hasPointerCapture && c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
   const tr = curMel(), r = +c.dataset.r, s = +c.dataset.s;
@@ -952,18 +990,24 @@ rbody.addEventListener('pointerdown', e => {
     return;
   }
   if (hit) {   // remove on release, unless the finger drags to resize it
-    rollPainters.set(e.pointerId, { note: hit, r, last: s, moved: false });
+    rollPainters.set(e.pointerId, { note: hit, r, last: s, moved: false, y: e.clientY });
     return;
   }
   const n = { s, r, l: 1, v: 0.75 };
   tr.notes.push(n);
-  rollPainters.set(e.pointerId, { note: n, r, last: s, moved: true });
+  rollPainters.set(e.pointerId, { note: n, r, last: s, moved: true, isNew: true, t: performance.now(), y: e.clientY });
   auditionNote(r, n.v);
   renderRoll(); save();
 });
 rbody.addEventListener('pointermove', e => {
+  if (rollScroll && rollScroll.pts.has(e.pointerId)) {
+    rollScroll.pts.set(e.pointerId, e.clientY);
+    setRollBase(rollScroll.d0 + Math.round((avgY() - rollScroll.y0) / rollScroll.rowH));
+    return;
+  }
   const p = rollPainters.get(e.pointerId);
   if (!p) return;
+  p.y = e.clientY;
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const c = el && el.closest('#rbody .cell');
   if (!c || +c.dataset.s === p.last) return;
@@ -972,6 +1016,11 @@ rbody.addEventListener('pointermove', e => {
   if (l !== p.note.l) { p.note.l = l; renderRoll(); save(); }
 });
 for (const ev of ['pointerup', 'pointercancel']) rbody.addEventListener(ev, e => {
+  if (rollScroll && rollScroll.pts.delete(e.pointerId)) {
+    if (rollScroll.pts.size) { rollScroll.y0 = avgY(); rollScroll.d0 = rollBase(); }
+    else { rollScroll = null; rbody.classList.remove('scrolling'); }
+    return;
+  }
   const p = rollPainters.get(e.pointerId);
   rollPainters.delete(e.pointerId);
   if (p && !p.moved && ev === 'pointerup') {
