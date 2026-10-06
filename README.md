@@ -30,6 +30,10 @@ The app has to be served over **https** for installing, offline mode and (later)
 2. Tap the ⋮ menu > **Add to home screen** (or **Install app**), then **Install**.
 3. Launch it from the home screen icon. It opens fullscreen, in landscape, with no browser bar.
 
+## On a phone
+
+Install it the same way and hold the phone sideways. On a landscape screen under 500px tall the looper switches to a compact layout: the top bar keeps Play, tempo, the instrument tabs, **Loops** and **•••**. Tap **•••** for Swing, Master, Rec, Loop export, Clear and full screen; tap anywhere outside the bar to close it. **Loops** swaps the grid for the loop pads (and back) instead of showing both. Use the installed app: in a normal Chrome tab the address bar takes height from the grid. Portrait still asks you to turn the phone.
+
 ## Updating after a change
 
 Edit `sw.js` and bump `VERSION` (e.g. `looper-v1` → `looper-v2`), then re-upload the folder. Installed copies fetch the new version in the background; close and reopen the app (swipe it away from recent apps) to see it. If you forget to bump the version, the tablet keeps showing the old copy.
