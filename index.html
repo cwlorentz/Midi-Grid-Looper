@@ -13,83 +13,92 @@
 <title>Grid Looper</title>
 <style>
 :root{
-  --bg:#101217; --panel:#181b22; --panel2:#222630; --line:#323846; --text:#e8eaf0; --dim:#8a90a0;
-  --cell-a:#262a34; --cell-b:#2d3240; --ph:#454c5e; --accent:#ffb340;
-  --top-h:76px; --head-w:clamp(210px,21vw,290px);
+  --bg:#0c0d10; --panel:#16181d; --panel2:#23262e; --line:#2c3039; --text:#f2f3f5; --dim:#8b909c;
+  --cell-a:#1e2128; --cell-b:#252932; --ph:#3c4252; --accent:#ffb340;
+  --top-h:76px; --head-w:clamp(240px,23vw,300px);
+  --tile:56px;   /* every button in the top bar is a tile of this size */
+  --ms:var(--tile); /* mute/solo tiles match the top-bar tiles */
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;overflow:hidden;
   overscroll-behavior:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 body{display:flex;flex-direction:column;height:100dvh;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
-  touch-action:manipulation;cursor:pointer;padding:0}
-button:active{filter:brightness(1.35)}
+/* metro tiles: flat, square, no borders, bold uppercase labels */
+button{font:inherit;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:inherit;
+  background:var(--panel2);border:none;border-radius:2px;touch-action:manipulation;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;flex:none;transition:transform .06s}
+button:active{filter:brightness(1.3);transform:scale(.95)}
 
 /* ---------- top bar ---------- */
-#top{height:var(--top-h);flex:none;display:flex;align-items:center;gap:14px;padding:8px 12px;
-  background:var(--panel);border-bottom:1px solid var(--line)}
-.group{display:flex;align-items:center;gap:8px;height:100%}
-.group>label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-#play{width:104px;height:58px;font-size:28px;line-height:1}
-#play.on{background:var(--accent);color:#111;border-color:var(--accent)}
-.sq{width:56px;height:56px;font-size:28px;line-height:1}
-#bpmVal{min-width:84px;height:56px;display:flex;align-items:center;justify-content:center;
-  font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;background:var(--bg);
-  border:1px solid var(--line);border-radius:10px;touch-action:none;cursor:ns-resize}
-.val{min-width:46px;font-variant-numeric:tabular-nums;color:var(--dim);font-size:15px}
+#top{height:var(--top-h);flex:none;display:flex;align-items:center;gap:14px;padding:10px 12px;
+  background:var(--panel)}
+.group{display:flex;align-items:center;gap:6px;height:100%}
+.group>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-right:4px}
+.tile{width:var(--tile);height:var(--tile);font-size:26px;line-height:1}
+.tile.txt{font-size:13px}
+#play{background:#2a7fff;color:#fff}
+#play.on{background:var(--accent);color:#111}
+#bpmVal{min-width:84px;height:var(--tile);display:flex;align-items:center;justify-content:center;
+  font-size:32px;font-weight:300;font-variant-numeric:tabular-nums;background:var(--bg);
+  border-radius:2px;touch-action:none;cursor:ns-resize}
+.val{min-width:46px;font-variant-numeric:tabular-nums;color:var(--dim);font-size:15px;font-weight:600}
 #swing,#master{width:clamp(110px,13vw,190px)}
 .spacer{flex:1}
-#clear{height:56px;padding:0 18px;font-size:17px}
-#clear.armed{background:#d9534f;border-color:#d9534f;color:#fff}
+#clear.armed{background:#e5393b;color:#fff}
 
-/* ---------- sliders ---------- */
+/* ---------- sliders (flat bar, square thumb) ---------- */
 input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:34px;margin:0;touch-action:none;
   --p:50%;--fill:var(--accent)}
-input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:0;
   background:linear-gradient(to right,var(--fill) var(--p),var(--line) var(--p))}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
-  background:var(--text);margin-top:-10px;border:none;box-shadow:0 1px 4px #0008}
-input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:var(--line)}
-input[type=range]::-moz-range-progress{height:8px;border-radius:4px;background:var(--fill)}
-input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--text);border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:28px;border-radius:1px;
+  background:var(--text);margin-top:-11px;border:none}
+input[type=range]::-moz-range-track{height:6px;border-radius:0;background:var(--line)}
+input[type=range]::-moz-range-progress{height:6px;border-radius:0;background:var(--fill)}
+input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;background:var(--text);border:none}
 
 /* ---------- grid ---------- */
 #grid{flex:1;min-height:0;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:6px;padding:6px 10px 10px}
 .row{display:grid;grid-template-columns:var(--head-w) 1fr;gap:10px;min-height:0}
-.head{display:grid;grid-template-columns:minmax(0,1fr) 50px 50px;grid-template-rows:minmax(0,1fr) 30px;
-  gap:3px 6px;background:var(--panel);border-radius:10px;padding:4px 8px 2px 8px;border-left:6px solid var(--c);min-height:0}
-.name{background:transparent;border:none;text-align:left;font-weight:700;font-size:16px;color:var(--c);
-  padding:0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.mute,.solo{font-weight:700;font-size:16px}
-.mute.on{background:#d9534f;border-color:#d9534f;color:#fff}
-.solo.on{background:#f0c419;border-color:#f0c419;color:#111}
-.head .vol{grid-column:1/-1;width:100%;height:30px;--fill:var(--c)}
-.steps{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));column-gap:5px;touch-action:none;min-height:0}
-.cell{border-radius:8px;background:var(--cell-a);min-height:0}
+.head{display:grid;grid-template-columns:minmax(0,1fr) var(--ms) var(--ms);grid-template-rows:minmax(0,1fr) 26px;
+  gap:0 6px;background:var(--panel);border-radius:0;padding:4px 4px 4px 10px;border-left:6px solid var(--c);min-height:0}
+.name{background:transparent;justify-content:flex-start;text-align:left;font-size:14px;letter-spacing:.03em;color:var(--c);
+  padding:0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:0}
+.name:active{transform:none}
+.mute,.solo{grid-row:1/-1;width:var(--ms);height:100%;max-height:var(--tile);align-self:center;font-size:17px}
+.mute{grid-column:2}.solo{grid-column:3}
+.mute.on{background:#e5393b;color:#fff}
+.solo.on{background:#f0c419;color:#111}
+.head .vol{grid-column:1;grid-row:2;width:100%;height:26px;--fill:var(--c)}
+/* 16 steps plus a thin spacer column between each group of 4, so every step is the same width */
+.steps{display:grid;column-gap:4px;touch-action:none;min-height:0;
+  grid-template-columns:repeat(4,minmax(0,1fr)) 4px repeat(4,minmax(0,1fr)) 4px repeat(4,minmax(0,1fr)) 4px repeat(4,minmax(0,1fr))}
+.cell:nth-child(5){grid-column:6}.cell:nth-child(9){grid-column:11}.cell:nth-child(13){grid-column:16}
+.cell{border-radius:2px;background:var(--cell-a);min-height:0}
 .cell.gb{background:var(--cell-b)}
-.cell:nth-child(4n+1):not(:first-child){margin-left:7px}
 .cell.ph{background:var(--ph)}
-.cell.on{background:var(--c);box-shadow:inset 0 -4px 0 #0004}
-.cell.on.ph{background:#fff;box-shadow:0 0 14px var(--c),inset 0 0 0 4px var(--c)}
+.cell.on{background:var(--c)}
+.cell.on.ph{background:#fff;box-shadow:inset 0 0 0 5px var(--c)}
 .row.silent .steps,.row.silent .name{opacity:.35}
 
 /* ---------- overlays ---------- */
 #rotate{display:none;position:fixed;inset:0;z-index:20;background:var(--bg);align-items:center;justify-content:center;
   flex-direction:column;gap:12px;font-size:22px;text-align:center;padding:24px}
 #rotate span{font-size:56px}
+@media (max-width:1100px){.name{font-size:12px}}
 @media (orientation:portrait){#rotate{display:flex}}
 </style>
 </head>
 <body>
 <header id="top">
-  <button id="play" aria-label="Play">▶</button>
+  <button id="play" class="tile" aria-label="Play">▶</button>
   <div class="group">
     <label>BPM</label>
-    <button id="bpmDown" class="sq" aria-label="Slower">−</button>
+    <button id="bpmDown" class="tile" aria-label="Slower">−</button>
     <div id="bpmVal" role="spinbutton" aria-label="Tempo, drag up or down">120</div>
-    <button id="bpmUp" class="sq" aria-label="Faster">+</button>
+    <button id="bpmUp" class="tile" aria-label="Faster">+</button>
   </div>
   <div class="group">
     <label for="swing">Swing</label>
@@ -101,8 +110,8 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
     <input id="master" type="range" min="0" max="100" step="1" value="80">
   </div>
   <div class="spacer"></div>
-  <button id="clear">Clear</button>
-  <button id="fs" class="sq" aria-label="Full screen">⛶</button>
+  <button id="clear" class="tile txt">Clear</button>
+  <button id="fs" class="tile" aria-label="Full screen">⛶</button>
 </header>
 <main id="grid"></main>
 <div id="rotate"><span>⟳</span>Turn the tablet sideways (landscape) to use the looper.</div>
@@ -513,7 +522,7 @@ $('master').addEventListener('input', e => {
   let armed = 0;
   b.addEventListener('click', () => {
     if (!armed) {
-      b.classList.add('armed'); b.textContent = 'Tap again';
+      b.classList.add('armed'); b.textContent = 'Sure?';
       armed = setTimeout(() => { armed = 0; b.classList.remove('armed'); b.textContent = 'Clear'; }, 2500);
       return;
     }

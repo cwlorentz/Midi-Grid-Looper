@@ -1,6 +1,6 @@
 // Cache-first service worker. Bump VERSION whenever you upload changed files,
 // so installed copies pick up the new version on their next launch.
-const VERSION = 'looper-v1';
+const VERSION = 'looper-v2';
 const FILES = [
   './',
   'index.html',
