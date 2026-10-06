@@ -4,7 +4,7 @@ This folder is the whole app. Upload the folder as it is; don't rename the files
 
 | File | What it is |
 |---|---|
-| `index.html` | The looper (Phase 1 grid plus the looper deck), with the install links and service worker registration |
+| `index.html` | The looper (drum grid, Bass/Lead/Pad synth tracks, looper deck), with the install links and service worker registration |
 | `manifest.webmanifest` | App name, icons, fullscreen, landscape |
 | `sw.js` | Offline cache (cache-first, versioned) |
 | `icon.svg`, `icon-192.png`, `icon-512.png` | App icon |
@@ -44,6 +44,19 @@ Edit `sw.js` and bump `VERSION` (e.g. `looper-v1` → `looper-v2`), then re-uplo
 - [ ] Bump `VERSION`, re-upload a small visible change, reopen twice: the change appears.
 - [ ] Timing still steady when launched from the home screen (same as in the browser tab).
 
+## Instruments (Bass, Lead, Pad)
+
+The **Drums / Bass / Lead / Pad** tiles in the top bar swap the grid area for that instrument. The looper deck stays put underneath.
+
+- Each instrument shows a piano roll: one row per note of the scale, one octave plus the top root. The root rows are highlighted.
+- **Tap** an empty cell to add a note (you hear it). **Drag right** while adding to make it longer. **Tap** a note to remove it, or press it and drag to change its length.
+- **Tap: Vel** switches taps to loudness: each tap on a note steps it from loud to soft (brighter = louder). Tap **Note** to go back to adding notes.
+- **Key** and **Scale** are shared by all three instruments. Every note snaps to the scale, and moving the key transposes everything. Chords stay chords.
+- **Oct** moves the view up or down an octave. Notes in other octaves keep playing; a ▴ or ▾ next to the number says some are out of view.
+- **Steps** sets that instrument's loop length (1 to 16). A 12-step bass against 16-step drums drifts around and lines up again every 3 bars.
+- **M / S** and the slider are mute, solo and volume. Solo works across drums and instruments. **Clear** clears only what's on screen.
+- To put an instrument on a loop pad, pick **In: Grid**: it records the drums and instruments together, so solo or mute tracks first to bounce just one.
+
 ## Looper deck (mic recording and loop layering)
 
 The 8 big pads under the grid are audio loops, like a hardware looper. Everything is on one screen.
@@ -51,7 +64,7 @@ The 8 big pads under the grid are audio loops, like a hardware looper. Everythin
 - **Tap an empty pad** to record into it. If the transport is stopped it starts playing, with one bar of clicks first when **Count** is on (mic only). If it's already playing, recording starts on the next bar line.
 - **Bars** sets the take length: 1, 2, 4 or 8 bars, then it stops by itself and starts looping. **Free** keeps recording until you tap the pad again; it ends on the nearest bar line.
 - **Tap a playing pad** to overdub onto that loop from the next bar. Tap it again to stop overdubbing on the next bar line.
-- **In: Mic** records the tablet microphone. **In: Grid** records the drum grid instead, so you can bounce a beat to a pad, change the beat, and stack another.
+- **In: Mic** records the tablet microphone. **In: Grid** records the drum grid and instruments instead, so you can bounce a beat to a pad, change the beat, and stack another.
 - Under each pad: **M** mutes it, **✕** clears it (tap twice; while a pad is recording one tap cancels the take), and the slider sets its volume.
 - **Delay** shifts mic recordings earlier to make up for the tablet's audio delay. It starts on an automatic guess; tap **Cal** with the speaker on (no headphones) in a quiet room to measure it, or drag the number up/down to fine-tune.
 - Loops are saved on the tablet (browser storage) and come back after closing the app.
@@ -66,5 +79,6 @@ The 8 big pads under the grid are audio loops, like a hardware looper. Everythin
 - Recording through the speaker also picks up the drums and other loops, and overdubbing then doubles them. Use wired headphones for clean takes.
 - Bluetooth headphones add a large, variable delay (often 150 to 300 ms). Run **Cal** without them, then add the extra by dragging Delay, or use wired headphones.
 - Changing BPM speeds loops up or down, so their pitch changes too.
+- Instruments have one octave on screen at a time and 16 steps at most; the drum tracks are always 16 steps.
 - Loops are mono and stay on this tablet; they aren't part of any export yet.
 - The Android navigation bar may appear briefly on swipe from the edge; that's normal for fullscreen apps.

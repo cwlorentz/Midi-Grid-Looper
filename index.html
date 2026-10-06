@@ -45,7 +45,11 @@ button:active{filter:brightness(1.3);transform:scale(.95)}
   font-size:32px;font-weight:300;font-variant-numeric:tabular-nums;background:var(--bg);
   border-radius:2px;touch-action:none;cursor:ns-resize}
 .val{min-width:46px;font-variant-numeric:tabular-nums;color:var(--dim);font-size:15px;font-weight:600}
-#swing,#master{width:clamp(110px,13vw,190px)}
+#swing,#master{width:clamp(90px,11vw,190px)}
+/* instrument switch: drums grid or one melodic track's piano roll */
+.vbtn{font-size:12px;letter-spacing:.04em;box-shadow:inset 0 -5px 0 var(--c)}
+.vbtn.on{background:var(--c);color:#111;box-shadow:none}
+.vbtn.silent{opacity:.45}
 .spacer{flex:1}
 #clear.armed{background:#e5393b;color:#fff}
 
@@ -62,7 +66,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 
 /* ---------- grid ---------- */
 #grid{flex:1;min-height:0;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:6px;padding:6px 10px 10px}
-@media (max-height:760px){:root{--tile:48px;--deck-w:270px}}
+@media (max-height:760px){:root{--tile:48px;--deck-w:270px}.vbtn{font-size:11px;letter-spacing:0}}
+@media (max-width:1180px){#top{gap:8px}#swing,#master{width:90px}}
 .row{display:grid;grid-template-columns:var(--head-w) 1fr;gap:10px;min-height:0}
 .head{display:grid;grid-template-columns:minmax(0,1fr) var(--ms) var(--ms);grid-template-rows:minmax(0,1fr) 18px;
   gap:0 6px;background:var(--panel);border-radius:0;padding:4px 4px 4px 10px;border-left:6px solid var(--c);min-height:0}
@@ -85,6 +90,36 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 .cell.on{background:var(--c)}
 .cell.on.ph{background:#fff;box-shadow:inset 0 0 0 5px var(--c)}
 .row.silent .steps,.row.silent .name{opacity:.35}
+
+/* ---------- piano roll (shown in place of the drum grid) ---------- */
+#roll{flex:1;min-height:0;display:none;grid-template-columns:var(--head-w) 1fr;gap:10px;padding:6px 10px 10px}
+body.mel #grid{display:none}
+body.mel #roll{display:grid}
+#rhead{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:6px 6px 6px 10px;border-left:6px solid var(--c);min-height:0}
+.rh{display:flex;gap:6px;align-items:center;flex:1 1 0;min-height:30px;max-height:var(--tile)}
+.rh>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);width:52px;flex:none}
+.rh button{height:100%;width:var(--tile);font-size:22px}
+.rh button.txt{font-size:13px}
+.rh .wide{flex:1;width:auto;min-width:0}
+.rh .name{flex:1;width:auto;font-size:15px;padding:0 4px}
+.rh .mute,.rh .solo{font-size:17px}
+.rh .seg.on{background:var(--c);color:#111}
+.rval{min-width:44px;height:100%;flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:300;
+  font-variant-numeric:tabular-nums;background:var(--bg);border-radius:2px}
+#rVol{flex:none;width:100%;height:22px;--fill:var(--c)}
+#rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:4px;min-height:0}
+.rrow{display:grid;grid-template-columns:46px 1fr;gap:6px;min-height:0}
+.nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:12px;font-weight:700;color:var(--dim);background:var(--panel)}
+.rrow.root .nlab{color:var(--c)}
+.rrow.root .cell:not(.on):not(.tail){background:#2a2e38}
+.rrow.root .cell.gb:not(.on):not(.tail){background:#313643}
+#rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a))}
+#rbody .cell.tail{background:color-mix(in srgb,var(--c) calc(var(--v) * 55%),var(--cell-a));border-radius:0}
+#rbody .cell.ph:not(.on):not(.tail){background:var(--ph)}
+#rbody .cell.on.ph{background:#fff;box-shadow:inset 0 0 0 5px var(--c)}
+#rbody .cell.tail.ph{box-shadow:inset 0 0 0 3px #fff}
+#rbody .cell.off{opacity:.2}
+#roll.silent #rbody{opacity:.35}
 
 /* ---------- looper deck: 8 big pads under the grid, like a hardware looper ---------- */
 #deck{flex:none;height:var(--deck-h);display:grid;grid-template-columns:var(--deck-w) minmax(0,1fr);gap:10px;padding:0 10px 10px}
@@ -164,16 +199,34 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
     <input id="master" type="range" min="0" max="100" step="1" value="80">
   </div>
   <div class="spacer"></div>
+  <div class="group" id="views"></div>
   <button id="clear" class="tile txt">Clear</button>
   <button id="fs" class="tile" aria-label="Full screen">⛶</button>
 </header>
 <main id="grid"></main>
+<main id="roll">
+  <div id="rhead">
+    <div class="rh"><button class="name" id="rName"></button>
+      <button class="mute" id="rMute">M</button><button class="solo" id="rSolo">S</button></div>
+    <input id="rVol" class="vol" type="range" min="0" max="100" step="1" aria-label="Track volume">
+    <div class="rh"><label>Key</label><button id="keyDown" aria-label="Key down">−</button>
+      <div class="rval" id="keyVal"></div><button id="keyUp" aria-label="Key up">+</button></div>
+    <div class="rh"><label>Scale</label><button id="scaleBtn" class="txt wide" aria-label="Change scale"></button></div>
+    <div class="rh"><label>Oct</label><button id="octDown" aria-label="Octave down">−</button>
+      <div class="rval" id="octVal"></div><button id="octUp" aria-label="Octave up">+</button></div>
+    <div class="rh"><label>Steps</label><button id="lenDown" aria-label="Shorter pattern">−</button>
+      <div class="rval" id="lenVal"></div><button id="lenUp" aria-label="Longer pattern">+</button></div>
+    <div class="rh"><label>Tap</label><button class="txt wide seg" data-edit="note">Note</button>
+      <button class="txt wide seg" data-edit="vel" aria-label="Tap a note to change how loud it is">Vel</button></div>
+  </div>
+  <div id="rbody"></div>
+</main>
 <section id="deck">
   <div id="deckCtl">
     <div class="drow">
       <label>In</label>
       <button class="tile txt seg" data-src="mic" aria-label="Record from the microphone">Mic</button>
-      <button class="tile txt seg" data-src="grid" aria-label="Record the drum grid">Grid</button>
+      <button class="tile txt seg" data-src="grid" aria-label="Record the drums and instruments">Grid</button>
       <button id="countIn" class="tile txt" aria-label="One bar of clicks before recording">Count</button>
     </div>
     <div class="drow" id="barsRow">
@@ -199,7 +252,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 <script>
 'use strict';
 /* =========================================================
-   Grid Looper, Phase 1: 8-track drum step sequencer
+   Grid Looper: 8-track drum step sequencer, 3 synth tracks, looper deck
    ========================================================= */
 const STEPS = 16;
 const LOOKAHEAD = 0.12;     // seconds of audio scheduled ahead
@@ -216,8 +269,35 @@ const TRACKS = [
   { name: 'High Tom',   voice: 'htom',  color: '#8f7bff' },
   { name: 'Cowbell',    voice: 'cow',   color: '#ff6fd0' },
 ];
+// melodic tracks, each edited in its own piano roll
+const MEL = [
+  { name: 'Bass', voice: 'bass', color: '#5ad1ff', oct: 1 },
+  { name: 'Lead', voice: 'lead', color: '#ff7eb6', oct: 4 },
+  { name: 'Pad',  voice: 'pad',  color: '#b388ff', oct: 3 },
+];
+const SCALES = [
+  ['Major', [0, 2, 4, 5, 7, 9, 11]], ['Minor', [0, 2, 3, 5, 7, 8, 10]], ['Dorian', [0, 2, 3, 5, 7, 9, 10]],
+  ['Mixolydian', [0, 2, 4, 5, 7, 9, 10]], ['Phrygian', [0, 1, 3, 5, 7, 8, 10]], ['Harm minor', [0, 2, 3, 5, 7, 8, 11]],
+  ['Pent major', [0, 2, 4, 7, 9]], ['Pent minor', [0, 3, 5, 7, 10]], ['Blues', [0, 3, 5, 6, 7, 10]],
+  ['Chromatic', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]],
+];
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const VELS = [1, 0.75, 0.5, 0.25];
 
 /* ---------------- state + persistence ---------------- */
+// Notes store `r`, a MIDI number counted as if the key were C; the sounding pitch is
+// r snapped to the scale, plus the key's root. So changing key transposes everything.
+function melTrack(j, notes) {
+  return { notes: notes || [], len: STEPS, vol: 0.7, mute: false, solo: false, oct: MEL[j].oct };
+}
+function demoMel() {
+  const n = (s, r, l, v) => ({ s, r, l, v: v || 0.75 });
+  return [
+    melTrack(0, [n(0, 24, 2, 1), n(3, 24, 1), n(6, 27, 1), n(8, 24, 2, 1), n(10, 31, 1), n(14, 34, 2)]),
+    melTrack(1, [n(2, 63, 2), n(6, 67, 2), n(10, 65, 2), n(14, 63, 2, 0.5)]),
+    melTrack(2, [n(0, 48, 16, 0.5), n(0, 51, 16, 0.5), n(0, 55, 16, 0.5)]),
+  ];
+}
 function demoState() {
   const pat = {
     kick: [0, 7, 8, 10], snare: [4, 12], clap: [12], chh: [0, 2, 4, 6, 8, 10, 12],
@@ -238,7 +318,12 @@ function load() {
   } catch (e) {}
   return null;
 }
-const state = load() || demoState();
+const saved = load();
+const state = saved || demoState();
+// older saves have drums only: give them empty instrument tracks (a fresh start gets a demo line)
+if (!Array.isArray(state.mel) || state.mel.length !== MEL.length) state.mel = saved ? MEL.map((_, j) => melTrack(j)) : demoMel();
+if (!state.key || SCALES.every(s => s[0] !== state.key.scale)) state.key = { root: 9, scale: 'Minor' };
+if (state.view == null) state.view = 'drums';
 let saveTimer = 0;
 function save() {
   clearTimeout(saveTimer);
@@ -246,7 +331,7 @@ function save() {
 }
 
 /* ---------------- audio engine ---------------- */
-let ctx = null, masterGain, gridBus, noiseBuf, trackGains = [], openHat = null;
+let ctx = null, masterGain, gridBus, noiseBuf, trackGains = [], melGains = [], openHat = null;
 
 function initAudio() {
   if (ctx) { if (ctx.state !== 'running') ctx.resume(); return; }
@@ -263,6 +348,7 @@ function initAudio() {
   gridBus = ctx.createGain();                     // all drum tracks, tapped when bouncing the grid to a layer
   gridBus.connect(masterGain);
   trackGains = TRACKS.map(() => { const g = ctx.createGain(); g.connect(gridBus); return g; });
+  melGains = MEL.map(() => { const g = ctx.createGain(); g.connect(gridBus); return g; });
   applyMix(true);
   if (ctx.state !== 'running') ctx.resume();
 }
@@ -364,21 +450,74 @@ const VOICES = {
   },
 };
 
-function audible(i) {
-  const anySolo = state.tracks.some(t => t.solo);
-  const t = state.tracks[i];
-  return !t.mute && (!anySolo || t.solo);
-}
-function applyMix(immediate) {
-  state.tracks.forEach((t, i) => {
-    const on = audible(i);
-    rows[i].classList.toggle('silent', !on);
-    if (ctx) {
-      const g = on ? t.vol * t.vol : 0;   // squared for a more natural fader feel
-      if (immediate) trackGains[i].gain.value = g;
-      else trackGains[i].gain.setTargetAtTime(g, ctx.currentTime, 0.015);
-    }
+/* ---------- synth voices for the melodic tracks: oscillators into a resonant lowpass ---------- */
+// osc: [wave, detune cents, frequency multiple, level]; a/d/s/r amp envelope; cut + env = filter sweep
+const PATCHES = {
+  bass: { osc: [['sawtooth', 0, 1, 0.5], ['square', 0, 0.5, 0.45]], cut: 160, env: 1500, q: 7, fdec: 0.07,
+          a: 0.004, d: 0.18, s: 0.7, r: 0.05, lvl: 0.6, gate: 0.95 },
+  lead: { osc: [['sawtooth', -8, 1, 0.35], ['sawtooth', 8, 1, 0.35], ['square', 0, 2, 0.1]], cut: 900, env: 2600, q: 3, fdec: 0.18,
+          a: 0.008, d: 0.25, s: 0.6, r: 0.12, lvl: 0.42, gate: 0.9 },
+  pad:  { osc: [['sawtooth', -14, 1, 0.22], ['sawtooth', 14, 1, 0.22], ['sawtooth', -5, 0.5, 0.16], ['triangle', 0, 2, 0.12]],
+          cut: 650, env: 900, q: 1, fdec: 0.9, a: 0.35, d: 1, s: 0.8, r: 0.7, lvl: 0.32, gate: 1 },
+};
+const voicesOn = new Set();   // sounding notes, so Stop can silence a long pad right away
+function playNote(kind, t, out, midi, v, dur) {
+  const P = PATCHES[kind], f = 440 * Math.pow(2, (midi - 69) / 12);
+  const lp = filt('lowpass', P.cut, P.q), g = ctx.createGain();
+  const end = Math.max(t + dur * P.gate, t + P.a + 0.01), off = end + P.r * 6;
+  const oscs = P.osc.map(([type, det, mult, lvl]) => {
+    const o = osc(type, f * mult), og = ctx.createGain();
+    o.detune.value = det; og.gain.value = lvl;
+    o.connect(og).connect(lp); o.start(t); o.stop(off);
+    return o;
   });
+  lp.frequency.setValueAtTime(Math.min(P.cut + P.env * (0.4 + 0.6 * v), 16000), t);
+  lp.frequency.setTargetAtTime(P.cut, t, P.fdec);
+  const pk = P.lvl * (0.2 + 0.8 * v);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(pk, t + P.a);
+  g.gain.setTargetAtTime(pk * P.s, t + P.a, P.d);
+  g.gain.setTargetAtTime(0, end, P.r);
+  lp.connect(g).connect(out);
+  const vo = { g, oscs };
+  voicesOn.add(vo);
+  oscs[0].onended = () => voicesOn.delete(vo);
+}
+function silenceNotes() {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  for (const vo of voicesOn) {
+    vo.g.gain.cancelScheduledValues(t);
+    vo.g.gain.setTargetAtTime(0, t, 0.02);
+    for (const o of vo.oscs) { try { o.stop(t + 0.15); } catch (e) {} }
+  }
+  voicesOn.clear();
+}
+
+/* ---------- scale lock ---------- */
+const scaleIv = () => (SCALES.find(s => s[0] === state.key.scale) || SCALES[1])[1];
+// nearest scale note to r (ties go down), still counted in C
+function snap(r) {
+  const iv = scaleIv(), rel = mod(r, 12);
+  let best = 0, bd = 99;
+  for (const x of iv.concat(12)) { const d = Math.abs(x - rel); if (d < bd) { bd = d; best = x; } }
+  return r - rel + best;
+}
+const noteName = m => NOTE_NAMES[mod(m, 12)] + (Math.floor(m / 12) - 1);
+
+function anySolo() { return state.tracks.some(t => t.solo) || state.mel.some(t => t.solo); }
+function isOn(t) { return !t.mute && (!anySolo() || t.solo); }
+function audible(i) { return isOn(state.tracks[i]); }
+function applyMix(immediate) {
+  const set = (node, t) => {
+    if (!ctx) return;
+    const g = isOn(t) ? t.vol * t.vol : 0;   // squared for a more natural fader feel
+    if (immediate) node.gain.value = g;
+    else node.gain.setTargetAtTime(g, ctx.currentTime, 0.015);
+  };
+  state.tracks.forEach((t, i) => { rows[i].classList.toggle('silent', !isOn(t)); set(trackGains[i], t); });
+  state.mel.forEach((t, j) => set(melGains[j], t));
+  renderViews();
   if (ctx) masterGain.gain.setTargetAtTime(Math.pow(state.master / 100, 2), ctx.currentTime, 0.015);
 }
 function audition(i) {
@@ -388,7 +527,7 @@ function audition(i) {
 }
 
 /* ---------------- scheduler ---------------- */
-let playing = false, curStep = 0, nextTime = 0, queue = [];
+let playing = false, curStep = 0, absStep = 0, nextTime = 0, queue = [], heardAbs = -1;
 const stepDur = () => 60 / state.bpm / 4;
 
 function schedule() {
@@ -403,9 +542,18 @@ function schedule() {
     for (let i = 0; i < TRACKS.length; i++) {
       if (state.tracks[i].steps[curStep] && audible(i)) VOICES[TRACKS[i].voice](t, trackGains[i], 1);
     }
-    queue.push({ step: curStep, time: t });
+    // each instrument loops over its own length, so a 12-step bass drifts against 16-step drums
+    state.mel.forEach((tr, j) => {
+      if (!isOn(tr)) return;
+      const s = absStep % tr.len;
+      for (const n of tr.notes) {
+        if (n.s === s) playNote(MEL[j].voice, t, melGains[j], snap(n.r) + state.key.root, n.v, n.l * sd);
+      }
+    });
+    queue.push({ step: curStep, abs: absStep, time: t });
     nextTime += sd;
     curStep = (curStep + 1) % STEPS;
+    absStep++;
   }
 }
 
@@ -434,7 +582,7 @@ async function keepAwake(on) {
 function start() {
   initAudio();
   playing = true;
-  curStep = 0;
+  curStep = 0; absStep = 0;
   queue = [];
   barCount = -1; barTimes = [];
   nextTime = ctx.currentTime + 0.06;
@@ -449,7 +597,9 @@ function stop() {
   queue = [];
   if (rec.state === 'count' || rec.state === 'wait' || rec.state === 'rec') cancelRec('Recording cancelled');
   stopLayers();
+  silenceNotes();
   setPlayhead(-1);
+  setRollPlayhead(-1); heardAbs = -1;
   playBtn.classList.remove('on'); playBtn.textContent = '▶'; playBtn.setAttribute('aria-label', 'Play');
   keepAwake(false);
 }
@@ -495,6 +645,7 @@ function render() {
     rows[i].querySelector('.solo').classList.toggle('on', t.solo);
     setRange(rows[i].querySelector('.vol'), Math.round(t.vol * 100));
   });
+  setView(state.view);
   $('bpmVal').textContent = state.bpm;
   setRange($('swing'), state.swing); $('swingVal').textContent = state.swing + '%';
   setRange($('master'), state.master);
@@ -512,9 +663,10 @@ function setPlayhead(s) {
 function draw() {
   if (playing && ctx) {
     const now = ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
-    let s = null;
-    while (queue.length && queue[0].time <= now) s = queue.shift().step;
-    if (s !== null) setPlayhead(s);
+    let q = null;
+    while (queue.length && queue[0].time <= now) q = queue.shift();
+    if (q) { setPlayhead(q.step); heardAbs = q.abs; }
+    if (heardAbs >= 0 && state.view !== 'drums') setRollPlayhead(heardAbs % state.mel[state.view].len);
   }
   drawLayers();
   requestAnimationFrame(draw);
@@ -615,10 +767,198 @@ $('master').addEventListener('input', e => {
       return;
     }
     clearTimeout(armed); armed = 0; b.classList.remove('armed'); b.textContent = 'Clear';
-    state.tracks.forEach(t => t.steps.fill(false));
+    // clears what's on screen: the drum grid, or just the instrument being shown
+    if (state.view === 'drums') state.tracks.forEach(t => t.steps.fill(false));
+    else state.mel[state.view].notes = [];
     render(); save();
   });
 }
+
+/* =========================================================
+   Instruments: the switch in the top bar swaps the drum grid for one
+   melodic track's piano roll. Rows are the notes of the chosen scale.
+   ========================================================= */
+const viewsEl = $('views'), rollEl = $('roll'), rbody = $('rbody');
+const VIEWS = [{ id: 'drums', name: 'Drums', color: 'var(--accent)' }].concat(MEL.map((m, j) => ({ id: j, name: m.name, color: m.color })));
+const viewBtns = VIEWS.map(v => {
+  const b = document.createElement('button');
+  b.className = 'tile txt vbtn';
+  b.textContent = v.name;
+  b.style.setProperty('--c', v.color);
+  b.setAttribute('aria-label', 'Show ' + v.name);
+  b.addEventListener('pointerdown', e => { e.preventDefault(); setView(v.id); });
+  viewsEl.appendChild(b);
+  return b;
+});
+function renderViews() {
+  VIEWS.forEach((v, k) => {
+    viewBtns[k].classList.toggle('on', v.id === state.view);
+    viewBtns[k].classList.toggle('silent', v.id === 'drums' ? !state.tracks.some(isOn) : !isOn(state.mel[v.id]));
+  });
+  if (state.view !== 'drums') rollEl.classList.toggle('silent', !isOn(state.mel[state.view]));
+}
+function setView(v) {
+  if (v !== 'drums' && !state.mel[v]) v = 'drums';
+  state.view = v;
+  document.body.classList.toggle('mel', v !== 'drums');
+  if (v !== 'drums') buildRoll();
+  renderViews(); save();
+}
+
+let rollRows = [], rollPh = -1, editMode = 'note';
+const curMel = () => state.mel[state.view];
+// one row per scale note across the track's octave, top note = root an octave up
+function buildRoll() {
+  const j = state.view, tr = curMel(), iv = scaleIv(), base = 12 * (tr.oct + 1);
+  rollEl.style.setProperty('--c', MEL[j].color);
+  const pitches = iv.map(x => base + x).concat(base + 12).reverse();
+  rbody.style.setProperty('--n', pitches.length);
+  rbody.innerHTML = '';
+  rollRows = pitches.map(r => {
+    const row = document.createElement('div');
+    row.className = 'rrow' + (mod(r, 12) === 0 ? ' root' : '');
+    row.innerHTML = `<div class="nlab">${noteName(r + state.key.root)}</div><div class="steps"></div>`;
+    const stepsEl = row.lastElementChild, cs = [];
+    for (let s = 0; s < STEPS; s++) {
+      const c = document.createElement('div');
+      c.className = 'cell' + ((s >> 2) % 2 ? ' gb' : '');
+      c.dataset.r = r; c.dataset.s = s;
+      stepsEl.appendChild(c); cs.push(c);
+    }
+    rbody.appendChild(row);
+    return { r, cells: cs };
+  });
+  rollPh = -1;
+  renderRoll();
+}
+function renderRoll() {
+  if (state.view === 'drums') return;
+  const tr = curMel(), at = new Map(rollRows.map((row, k) => [row.r, k]));
+  const mark = rollRows.map(() => new Array(STEPS).fill(null));
+  for (const n of tr.notes) {
+    const k = at.get(snap(n.r));
+    if (k == null || n.s >= tr.len) continue;
+    for (let s = n.s; s < Math.min(n.s + n.l, STEPS); s++) {
+      if (!mark[k][s] || s === n.s) mark[k][s] = { on: s === n.s, v: n.v };
+    }
+  }
+  rollRows.forEach((row, k) => row.cells.forEach((c, s) => {
+    const m = mark[k][s];
+    c.classList.toggle('on', !!(m && m.on));
+    c.classList.toggle('tail', !!(m && !m.on));
+    c.classList.toggle('off', s >= tr.len);
+    if (m) c.style.setProperty('--v', 0.35 + 0.65 * m.v); else c.style.removeProperty('--v');
+  }));
+  const j = state.view;
+  $('rName').textContent = MEL[j].name;
+  $('rMute').classList.toggle('on', tr.mute);
+  $('rSolo').classList.toggle('on', tr.solo);
+  setRange($('rVol'), Math.round(tr.vol * 100));
+  $('keyVal').textContent = NOTE_NAMES[state.key.root];
+  $('scaleBtn').textContent = state.key.scale;
+  // notes outside the visible octave still play; arrows say which way they are
+  const lo = 12 * (tr.oct + 1), hi = lo + 12;
+  const up = tr.notes.some(n => snap(n.r) > hi), down = tr.notes.some(n => snap(n.r) < lo);
+  $('octVal').textContent = (down ? '▾' : '') + tr.oct + (up ? '▴' : '');
+  $('lenVal').textContent = tr.len;
+  rollEl.querySelectorAll('[data-edit]').forEach(b => b.classList.toggle('on', b.dataset.edit === editMode));
+  renderViews();
+}
+function setRollPlayhead(s) {
+  if (s === rollPh) return;
+  for (const row of rollRows) {
+    if (rollPh >= 0) row.cells[rollPh].classList.remove('ph');
+    if (s >= 0) row.cells[s].classList.add('ph');
+  }
+  rollPh = s;
+}
+function auditionNote(r, v) {
+  initAudio();
+  const j = state.view;
+  const vol = state.mel[j].vol;   // like the drums, preview even when the track is muted
+  playNote(MEL[j].voice, ctx.currentTime + 0.005, masterGain, snap(r) + state.key.root, v * Math.max(vol * vol, 0.1), Math.min(stepDur() * 2, 0.5));
+}
+// the note whose start or tail is at (row pitch r, step s)
+function noteAt(r, s, startOnly) {
+  const tr = curMel();
+  return tr.notes.find(n => snap(n.r) === r && (n.s === s || (!startOnly && s > n.s && s < n.s + n.l)));
+}
+
+/* ---------- roll touch: tap to add, drag right to lengthen, tap a note to remove ---------- */
+const rollPainters = new Map();
+rbody.addEventListener('pointerdown', e => {
+  const c = e.target.closest('.cell');
+  if (!c) return;
+  e.preventDefault();
+  initAudio();
+  if (c.hasPointerCapture && c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
+  const tr = curMel(), r = +c.dataset.r, s = +c.dataset.s;
+  if (s >= tr.len) return;
+  const hit = noteAt(r, s, false);
+  if (editMode === 'vel') {
+    if (!hit) return;
+    const k = VELS.reduce((b, x, i) => Math.abs(x - hit.v) < Math.abs(VELS[b] - hit.v) ? i : b, 0);
+    hit.v = VELS[(k + 1) % VELS.length];
+    auditionNote(hit.r, hit.v);
+    renderRoll(); save();
+    return;
+  }
+  if (hit) {   // remove on release, unless the finger drags to resize it
+    rollPainters.set(e.pointerId, { note: hit, r, last: s, moved: false });
+    return;
+  }
+  const n = { s, r, l: 1, v: 0.75 };
+  tr.notes.push(n);
+  rollPainters.set(e.pointerId, { note: n, r, last: s, moved: true });
+  auditionNote(r, n.v);
+  renderRoll(); save();
+});
+rbody.addEventListener('pointermove', e => {
+  const p = rollPainters.get(e.pointerId);
+  if (!p) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const c = el && el.closest('#rbody .cell');
+  if (!c || +c.dataset.s === p.last) return;
+  p.last = +c.dataset.s; p.moved = true;
+  const l = Math.max(1, Math.min(p.last - p.note.s + 1, curMel().len - p.note.s));
+  if (l !== p.note.l) { p.note.l = l; renderRoll(); save(); }
+});
+for (const ev of ['pointerup', 'pointercancel']) rbody.addEventListener(ev, e => {
+  const p = rollPainters.get(e.pointerId);
+  rollPainters.delete(e.pointerId);
+  if (p && !p.moved && ev === 'pointerup') {
+    const tr = curMel();
+    tr.notes = tr.notes.filter(n => n !== p.note);
+    renderRoll(); save();
+  }
+});
+
+/* ---------- roll head controls ---------- */
+function onTap(id, fn) { $(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); }); }
+onTap('rName', () => auditionNote(12 * (curMel().oct + 1), 0.75));
+onTap('rMute', () => { curMel().mute = !curMel().mute; applyMix(); renderRoll(); save(); });
+onTap('rSolo', () => { curMel().solo = !curMel().solo; applyMix(); renderRoll(); save(); });
+$('rVol').addEventListener('input', e => {
+  curMel().vol = e.target.value / 100; setRange(e.target, e.target.value); applyMix(); save();
+});
+// key is shared by all instruments; moving it transposes every note
+function setKey(d) { state.key.root = mod(state.key.root + d, 12); buildRoll(); save(); if (!playing) auditionNote(12 * (curMel().oct + 1), 0.75); }
+onTap('keyDown', () => setKey(-1));
+onTap('keyUp', () => setKey(1));
+onTap('scaleBtn', () => {
+  const k = SCALES.findIndex(s => s[0] === state.key.scale);
+  state.key.scale = SCALES[(k + 1) % SCALES.length][0];
+  buildRoll(); save();
+});
+function setOct(d) { const tr = curMel(); tr.oct = Math.max(0, Math.min(7, tr.oct + d)); buildRoll(); save(); }
+onTap('octDown', () => setOct(-1));
+onTap('octUp', () => setOct(1));
+function setLen(d) { const tr = curMel(); tr.len = Math.max(1, Math.min(STEPS, tr.len + d)); renderRoll(); save(); }
+onTap('lenDown', () => setLen(-1));
+onTap('lenUp', () => setLen(1));
+rollEl.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('pointerdown', e => {
+  e.preventDefault(); editMode = b.dataset.edit; renderRoll();
+}));
 
 $('fs').addEventListener('click', async () => {
   try {
