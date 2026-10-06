@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#101217">
+<meta name="theme-color" content="#0e0f11">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Touch-first step grid looper">
 <link rel="manifest" href="manifest.webmanifest">
@@ -13,8 +13,10 @@
 <title>Grid Looper</title>
 <style>
 :root{
-  --bg:#0c0d10; --panel:#16181d; --panel2:#23262e; --line:#2c3039; --text:#f2f3f5; --dim:#8b909c;
-  --cell-a:#1e2128; --cell-b:#252932; --ph:#3c4252; --accent:#ffb340;
+  /* studio graphite: near-black, quiet controls; colour (with an LED glow) only where something is on */
+  --bg:#0e0f11; --panel:#15161a; --panel2:#1f2125; --line:#2a2c31; --text:#f2f2f2; --dim:#7d808a;
+  --cell-a:#17181c; --cell-b:#17181c; --ph:rgba(255,255,255,.07); --accent:#ffb340;
+  --dot:#34363d;   /* empty step marker */
   --tile:56px;   /* every button in the top bar is a tile of this size */
   --top-h:calc(var(--tile) + 20px);
   --head-w:clamp(236px,18vw,260px);  /* drum track names */
@@ -31,27 +33,27 @@ body{display:flex;flex-direction:column;height:100dvh;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 /* metro tiles: flat, square, no borders, bold uppercase labels */
 button{font:inherit;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:inherit;
-  background:var(--panel2);border:none;border-radius:2px;touch-action:manipulation;cursor:pointer;padding:0;
+  background:var(--panel2);border:none;border-radius:6px;touch-action:manipulation;cursor:pointer;padding:0;
   display:flex;align-items:center;justify-content:center;flex:none;transition:transform .06s}
 button:active{filter:brightness(1.3);transform:scale(.95)}
 
 /* ---------- top bar ---------- */
 #top{height:var(--top-h);flex:none;display:flex;align-items:center;gap:14px;padding:10px 12px;
-  background:var(--panel)}
+  background:var(--bg);border-bottom:1px solid var(--line)}
 .group{display:flex;align-items:center;gap:6px;height:100%}
 .group>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-right:4px}
 .tile{width:var(--tile);height:var(--tile);font-size:26px;line-height:1}
 .tile.txt{font-size:13px}
-#play{background:#2a7fff;color:#fff}
-#play.on{background:var(--accent);color:#111}
+#play{background:var(--text);color:#111}
+#play.on{background:var(--accent);color:#111;box-shadow:0 0 18px 2px color-mix(in srgb,var(--accent) 55%,transparent)}
 #bpmVal{min-width:84px;height:var(--tile);display:flex;align-items:center;justify-content:center;
   font-size:32px;font-weight:300;font-variant-numeric:tabular-nums;background:var(--bg);
-  border-radius:2px;touch-action:none;cursor:ns-resize}
+  border-radius:6px;touch-action:none;cursor:ns-resize}
 .val{min-width:46px;font-variant-numeric:tabular-nums;color:var(--dim);font-size:15px;font-weight:600}
 #swing,#master{width:clamp(90px,11vw,190px)}
 /* instrument switch: drums grid or one melodic track's piano roll */
-.vbtn{font-size:12px;letter-spacing:.04em;box-shadow:inset 0 -5px 0 var(--c)}
-.vbtn.on{background:var(--c);color:#111;box-shadow:none}
+.vbtn{font-size:12px;letter-spacing:.04em;box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--c) 70%,transparent)}
+.vbtn.on{background:var(--c);color:#111;box-shadow:0 0 14px 1px color-mix(in srgb,var(--c) 55%,transparent)}
 .vbtn.silent{opacity:.45}
 .spacer{flex:1}
 /* sliders with their label on top, so the bar has room for the record tiles */
@@ -68,46 +70,58 @@ button:active{filter:brightness(1.3);transform:scale(.95)}
 /* ---------- sliders (flat bar, square thumb) ---------- */
 input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:34px;margin:0;touch-action:none;
   --p:50%;--fill:var(--accent)}
-input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:0;
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
   background:linear-gradient(to right,var(--fill) var(--p),var(--line) var(--p))}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:28px;border-radius:1px;
-  background:var(--text);margin-top:-11px;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:5px;
+  background:var(--text);margin-top:-12px;border:none}
 input[type=range]::-moz-range-track{height:6px;border-radius:0;background:var(--line)}
 input[type=range]::-moz-range-progress{height:6px;border-radius:0;background:var(--fill)}
 input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;background:var(--text);border:none}
 
 /* ---------- grid ---------- */
-#grid{flex:1;min-height:0;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:6px;padding:6px 10px 10px}
+#grid{flex:1;min-height:0;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:8px;padding:10px 12px 12px}
 @media (max-height:760px){:root{--tile:48px;--deck-w:256px}.vbtn,#deckCtl .txt{font-size:11px;letter-spacing:0}}
 @media (max-width:1180px){#top{gap:8px}#swing,#master{width:90px}}
-.row{display:grid;grid-template-columns:var(--head-w) 1fr;gap:10px;min-height:0}
+.row{display:grid;grid-template-columns:var(--head-w) 1fr;gap:16px;min-height:0}
+/* track head: name with a lit colour chip, quiet M/S that only fill when engaged */
 .head{display:grid;grid-template-columns:minmax(0,1fr) var(--ms) var(--ms);grid-template-rows:minmax(0,1fr) 18px;
-  gap:0 6px;background:var(--panel);border-radius:0;padding:4px 4px 4px 10px;border-left:6px solid var(--c);min-height:0}
-.name{background:transparent;justify-content:flex-start;text-align:left;font-size:13px;line-height:1;letter-spacing:.03em;color:var(--c);
-  padding:0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:0}
+  gap:0 6px;background:transparent;border-radius:0;padding:2px 0;min-height:0}
+.name{background:transparent;justify-content:flex-start;text-align:left;font-size:13px;line-height:1;letter-spacing:.06em;color:var(--text);
+  padding:0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:0;gap:10px}
+.head .name::before{content:'';flex:none;width:8px;height:8px;border-radius:50%;background:var(--c);
+  box-shadow:0 0 8px 1px color-mix(in srgb,var(--c) 70%,transparent)}
 .name:active{transform:none}
-.mute,.solo{grid-row:1/-1;width:var(--ms);height:100%;max-height:var(--tile);align-self:center;font-size:17px}
+.mute,.solo{grid-row:1/-1;width:var(--ms);height:100%;max-height:var(--tile);align-self:center;font-size:17px;
+  background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 .mute{grid-column:2}.solo{grid-column:3}
-.mute.on{background:#e5393b;color:#fff}
-.solo.on{background:#f0c419;color:#111}
-.head .vol{grid-column:1;grid-row:2;width:100%;height:18px;--fill:var(--c)}
-.head .vol::-webkit-slider-thumb{width:12px;height:18px;margin-top:-6px}
+.mute.on{background:#e5393b;color:#fff;box-shadow:0 0 12px 1px rgba(229,57,59,.5)}
+.solo.on{background:#f0c419;color:#111;box-shadow:0 0 12px 1px rgba(240,196,25,.5)}
+.head .vol{grid-column:1;grid-row:2;width:100%;height:18px;--fill:color-mix(in srgb,var(--c) 70%,var(--bg))}
+.head .vol::-webkit-slider-runnable-track{height:3px}
+.head .vol::-webkit-slider-thumb{width:12px;height:16px;margin-top:-6.5px;border-radius:4px;background:#c9cbd1}
 /* 16 steps plus a thin spacer column between each group of 4, so every step is the same width */
-.steps{display:grid;column-gap:4px;touch-action:none;min-height:0;
-  grid-template-columns:repeat(4,minmax(0,1fr)) 4px repeat(4,minmax(0,1fr)) 4px repeat(4,minmax(0,1fr)) 4px repeat(4,minmax(0,1fr))}
+.steps{display:grid;column-gap:6px;touch-action:none;min-height:0;
+  grid-template-columns:repeat(4,minmax(0,1fr)) 14px repeat(4,minmax(0,1fr)) 14px repeat(4,minmax(0,1fr)) 14px repeat(4,minmax(0,1fr))}
 .cell:nth-child(5){grid-column:6}.cell:nth-child(9){grid-column:11}.cell:nth-child(13){grid-column:16}
-.cell{border-radius:2px;background:var(--cell-a);min-height:0}
-.cell.gb{background:var(--cell-b)}
+/* empty step = small dim dot; lit step = glowing pad. The whole cell stays the tap target */
+.cell{border-radius:7px;background:transparent;min-height:0;position:relative}
+.cell::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
+  background:var(--dot);pointer-events:none}
 .cell.ph{background:var(--ph)}
-.cell.on{background:var(--c)}
-.cell.on.ph{background:#fff;box-shadow:inset 0 0 0 5px var(--c)}
+.cell.ph::after{background:#8a8d96}
+.cell.on{background:var(--c);
+  box-shadow:0 0 20px 3px color-mix(in srgb,var(--c) 65%,transparent),0 0 4px color-mix(in srgb,var(--c) 90%,transparent)}
+.cell.on::after{display:none}
+.cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff);
+  box-shadow:0 0 22px 4px color-mix(in srgb,var(--c) 80%,transparent),0 0 4px #fff}
 .row.silent .steps,.row.silent .name{opacity:.35}
 
 /* ---------- piano roll (shown in place of the drum grid) ---------- */
 #roll{flex:1;min-height:0;display:none;grid-template-columns:var(--rhead-w) 1fr;gap:10px;padding:6px 10px 10px}
 body.mel #grid{display:none}
 body.mel #roll{display:grid}
-#rhead{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:6px 6px 6px 8px;border-left:6px solid var(--c);min-height:0}
+#rhead{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:6px 6px 6px 8px;border-radius:8px;
+  box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c) 80%,transparent);min-height:0}
 .rh{display:flex;gap:6px;align-items:center;flex:1 1 0;min-height:30px;max-height:var(--tile)}
 .rh>label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);flex:none;margin:0 2px}
 .rh button{height:100%;width:var(--tile);font-size:22px}
@@ -120,7 +134,7 @@ body.mel #roll{display:grid}
 .rh .mute,.rh .solo{font-size:17px}
 .rh .seg.on{background:var(--c);color:#111}
 .rval{min-width:0;height:100%;flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:300;
-  font-variant-numeric:tabular-nums;background:var(--bg);border-radius:2px;touch-action:none;cursor:ew-resize}
+  font-variant-numeric:tabular-nums;background:var(--bg);border-radius:6px;touch-action:none;cursor:ew-resize}
 #scaleBtn{touch-action:none;cursor:ew-resize}
 /* while a value is being swiped, light it in the track colour */
 .rval.swiping,#scaleBtn.swiping{box-shadow:inset 0 0 0 2px var(--c);color:var(--c)}
@@ -139,23 +153,25 @@ body.mel #roll{display:grid}
 #rmap .nt{position:absolute;left:8px;width:16px;height:3px;background:var(--c);border-radius:1px;transform:translateY(50%)}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:4px;min-height:0}
 .rrow{display:grid;grid-template-columns:42px 1fr;gap:6px;min-height:0}
-.nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:12px;font-weight:700;color:var(--dim);background:var(--panel)}
+.nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:12px;font-weight:700;color:var(--dim);background:transparent;border-radius:4px}
 .rrow.root .nlab{color:var(--c)}
 .nlab{touch-action:none;cursor:ns-resize}
 #rbody.scrolling .nlab{background:var(--panel2);color:var(--text)}
-.rrow.root .cell:not(.on):not(.tail){background:#2a2e38}
-.rrow.root .cell.gb:not(.on):not(.tail){background:#313643}
-#rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a))}
-#rbody .cell.tail{background:color-mix(in srgb,var(--c) calc(var(--v) * 55%),var(--cell-a));border-radius:0}
+#rbody .cell{border-radius:5px}
+.rrow.root .cell:not(.on):not(.tail){background:#1a1b20}
+#rbody .cell.on{background:color-mix(in srgb,var(--c) calc(var(--v) * 100%),var(--cell-a));
+  box-shadow:0 0 12px color-mix(in srgb,var(--c) calc(var(--v) * 60%),transparent)}
+#rbody .cell.tail{background:color-mix(in srgb,var(--c) calc(var(--v) * 45%),var(--cell-a));border-radius:0}
+#rbody .cell.tail::after{display:none}
 #rbody .cell.ph:not(.on):not(.tail){background:var(--ph)}
-#rbody .cell.on.ph{background:#fff;box-shadow:inset 0 0 0 5px var(--c)}
-#rbody .cell.tail.ph{box-shadow:inset 0 0 0 3px #fff}
+#rbody .cell.on.ph{background:color-mix(in srgb,var(--c) 45%,#fff);box-shadow:0 0 18px 3px color-mix(in srgb,var(--c) 75%,transparent)}
+#rbody .cell.tail.ph{box-shadow:inset 0 0 0 2px #fff}
 #rbody .cell.off{opacity:.2}
 #roll.silent #rbody{opacity:.35}
 
 /* ---------- looper deck: 8 big pads under the grid, like a hardware looper ---------- */
 #deck{flex:none;height:var(--deck-h);display:grid;grid-template-columns:var(--deck-w) minmax(0,1fr);gap:10px;padding:0 10px 10px}
-#deckCtl{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:8px;min-height:0;position:relative}
+#deckCtl{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:8px;border-radius:8px;overflow:hidden;min-height:0;position:relative}
 .drow{display:flex;gap:6px;align-items:center;flex:none}
 .drow>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0 2px 0 4px}
 #barsRow button{flex:1;width:auto;min-width:0}
@@ -166,10 +182,10 @@ body.mel #roll{display:grid}
 #meter.show{visibility:visible}
 #meter i{display:block;height:100%;width:0;background:#5ee08a}
 #latVal{min-width:64px;height:var(--tile);flex:1;display:flex;align-items:center;justify-content:center;font-size:17px;
-  font-weight:600;font-variant-numeric:tabular-nums;background:var(--bg);border-radius:2px;touch-action:none;cursor:ns-resize}
-#pads{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;min-width:0;min-height:0}
+  font-weight:600;font-variant-numeric:tabular-nums;background:var(--bg);border-radius:6px;touch-action:none;cursor:ns-resize}
+#pads{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;min-width:0;min-height:0}
 .strip{display:flex;flex-direction:column;gap:6px;min-width:0;min-height:0}
-.pad{flex:1;min-height:0;width:100%;position:relative;overflow:hidden;display:block;background:var(--panel2);text-align:left}
+.pad{flex:1;min-height:0;width:100%;position:relative;overflow:hidden;display:block;background:var(--panel);text-align:left;border-radius:8px}
 .pad:active{transform:scale(.97)}
 .pad canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .pad span{position:absolute;pointer-events:none;white-space:nowrap}
@@ -178,30 +194,32 @@ body.mel #roll{display:grid}
 .pname{left:10px;right:8px;bottom:12px;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em}
 /* empty pad: a big record mark fills the face; loops get a full-height waveform instead */
 .pad.empty::before{content:'';position:absolute;left:50%;top:52%;width:clamp(22px,32%,54px);aspect-ratio:1;border-radius:50%;
-  transform:translate(-50%,-50%);border:3px solid color-mix(in srgb,#e5393b 55%,transparent);pointer-events:none}
+  transform:translate(-50%,-50%);border:2px solid color-mix(in srgb,#e5393b 40%,transparent);pointer-events:none}
 .pad.empty .pst{display:none}
 /* live input level while this pad records from the mic */
 .plev{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(255,255,255,.22);pointer-events:none}
 .pprog{position:absolute;left:0;bottom:0;height:5px;width:0;background:var(--c)}
 .pad.empty .pst{color:var(--dim)}
 .pad.empty .pnum{color:var(--dim)}
-.pad.play{background:color-mix(in srgb,var(--c) 16%,var(--panel2))}
+.pad.play{background:color-mix(in srgb,var(--c) 12%,var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 55%,transparent),0 0 16px color-mix(in srgb,var(--c) 30%,transparent)}
 .pad.armed{animation:blink .8s steps(2) infinite}
-.pad.rec{background:#c62828;color:#fff}
-.pad.dub{background:#e8590c;color:#fff}
+.pad.rec{background:#c62828;color:#fff;box-shadow:0 0 22px 3px rgba(229,57,59,.55)}
+.pad.dub{background:#e8590c;color:#fff;box-shadow:0 0 22px 3px rgba(232,89,12,.55)}
 .pad.rec .pnum,.pad.dub .pnum,.pad.rec .pname,.pad.dub .pname{color:#fff}
 .pad.rec .pprog,.pad.dub .pprog{background:#fff}
-.pad.muted{opacity:.4}
+.pad.muted{opacity:.4;box-shadow:none}
 @keyframes blink{50%{background:#c62828;color:#fff}}
 .sbtn{display:flex;gap:6px;flex:none}
 .sbtn button{flex:1;width:auto;min-width:0;height:var(--tile);font-size:17px}
+.sbtn button{background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 .sbtn .mute.on{background:#e5393b;color:#fff}
 .sbtn .del.armed{background:#e5393b;color:#fff}
-.strip.empty .sbtn,.strip.empty .vol{opacity:.3;pointer-events:none}
+/* empty pads carry no controls at all, so the deck only shows what exists */
+.strip.empty .sbtn,.strip.empty .vol{visibility:hidden;pointer-events:none}
 .strip .vol{flex:none;width:100%;height:22px;--fill:var(--c)}
 @media (max-width:1100px){.pnum{font-size:24px}.pst{top:36px;font-size:11px;letter-spacing:.04em}.pname{bottom:9px;font-size:10px;letter-spacing:0}}
 .strip.cancel .del{opacity:1;pointer-events:auto;background:#e5393b;color:#fff}
-.strip.cancel .sbtn{opacity:1;pointer-events:auto}
+.strip.cancel .sbtn{visibility:visible;pointer-events:auto}
 
 /* ---------- message banner ---------- */
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));z-index:15;
