@@ -51,7 +51,16 @@ button:active{filter:brightness(1.3);transform:scale(.95)}
 .vbtn.on{background:var(--c);color:#111;box-shadow:none}
 .vbtn.silent{opacity:.45}
 .spacer{flex:1}
+/* sliders with their label on top, so the bar has room for the record tiles */
+.group.stack{flex-direction:column;align-items:stretch;justify-content:center;gap:0}
+.group.stack>div{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px}
+.group.stack label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.group.stack .val{min-width:0;font-size:13px}
 #clear.armed{background:#e5393b;color:#fff}
+/* master recorder: Rec captures everything you hear, Loop bounces one pass of the loop */
+#mixRec{background:#c62828;color:#fff;font-size:22px}
+#mixRec.on{animation:blink .8s steps(2) infinite;font-size:14px;font-variant-numeric:tabular-nums;letter-spacing:0}
+#loopExp.on{background:#e8590c;color:#fff;letter-spacing:0}
 
 /* ---------- sliders (flat bar, square thumb) ---------- */
 input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:34px;margin:0;touch-action:none;
@@ -171,6 +180,14 @@ body.mel #roll{display:grid}
 #toast.info{background:var(--panel2)}
 #toast span{flex:1}
 #toast button{background:rgba(0,0,0,.25)}
+#saveBar{position:fixed;right:12px;top:calc(var(--top-h) + 10px + env(safe-area-inset-top));z-index:14;display:none;align-items:center;gap:6px;
+  padding:6px 6px 6px 16px;background:var(--panel2);box-shadow:inset 6px 0 0 #5ee08a;font-size:15px;line-height:1.3;max-width:calc(100vw - 24px)}
+#saveBar.show{display:flex}
+#saveBar span{margin-right:8px;min-width:0}
+#saveBar span b{display:block;font-size:12px;letter-spacing:.1em;color:#5ee08a}
+#saveBar button{background:var(--bg)}
+#saveBar #saveFile{background:#5ee08a;color:#111}
+#saveBar #saveClose.armed{background:#e5393b;color:#fff}
 
 /* ---------- overlays ---------- */
 #rotate{display:none;position:fixed;inset:0;z-index:20;background:var(--bg);align-items:center;justify-content:center;
@@ -189,14 +206,17 @@ body.mel #roll{display:grid}
     <div id="bpmVal" role="spinbutton" aria-label="Tempo, drag up or down">120</div>
     <button id="bpmUp" class="tile" aria-label="Faster">+</button>
   </div>
-  <div class="group">
-    <label for="swing">Swing</label>
+  <div class="group stack">
+    <div><label for="swing">Swing</label><span id="swingVal" class="val">50%</span></div>
     <input id="swing" type="range" min="50" max="75" step="1" value="50">
-    <span id="swingVal" class="val">50%</span>
+  </div>
+  <div class="group stack">
+    <div><label for="master">Master</label></div>
+    <input id="master" type="range" min="0" max="100" step="1" value="80">
   </div>
   <div class="group">
-    <label for="master">Master</label>
-    <input id="master" type="range" min="0" max="100" step="1" value="80">
+    <button id="mixRec" class="tile" aria-label="Record everything you hear to a WAV file">●</button>
+    <button id="loopExp" class="tile txt" aria-label="Export one pass of the loop as a WAV file">Loop</button>
   </div>
   <div class="spacer"></div>
   <div class="group" id="views"></div>
@@ -246,6 +266,10 @@ body.mel #roll{display:grid}
   </div>
   <div id="pads"></div>
 </section>
+<div id="saveBar" role="status"><span></span>
+  <button id="saveFile" class="tile txt" aria-label="Save the recording to the tablet">Save</button>
+  <button id="shareFile" class="tile txt" aria-label="Send the recording to another app">Share</button>
+  <button id="saveClose" class="tile" aria-label="Discard the recording">✕</button></div>
 <div id="toast" role="alert"><span></span><button class="tile" aria-label="Dismiss">✕</button></div>
 <div id="rotate"><span>⟳</span>Turn the tablet sideways (landscape) to use the looper.</div>
 
@@ -331,17 +355,23 @@ function save() {
 }
 
 /* ---------------- audio engine ---------------- */
-let ctx = null, masterGain, gridBus, noiseBuf, trackGains = [], melGains = [], openHat = null;
+let ctx = null, masterGain, masterComp, recComp, gridBus, noiseBuf, trackGains = [], melGains = [], openHat = null;
 
 function initAudio() {
   if (ctx) { if (ctx.state !== 'running') ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
   ctx = new AC({ latencyHint: 'interactive' });
-  const comp = ctx.createDynamicsCompressor();      // keeps the sum from clipping
-  comp.threshold.value = -8; comp.knee.value = 6; comp.ratio.value = 6;
-  comp.attack.value = 0.003; comp.release.value = 0.12;
+  const mkComp = () => {                          // keeps the sum from clipping
+    const c = ctx.createDynamicsCompressor();
+    c.threshold.value = -8; c.knee.value = 6; c.ratio.value = 6;
+    c.attack.value = 0.003; c.release.value = 0.12;
+    return c;
+  };
+  masterComp = mkComp();
   masterGain = ctx.createGain();
-  masterGain.connect(comp); comp.connect(ctx.destination);
+  masterGain.connect(masterComp); masterComp.connect(ctx.destination);
+  recComp = mkComp();                             // a twin feeding the master recorder, so count-in clicks stay out of it
+  masterGain.connect(recComp);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -596,6 +626,7 @@ function stop() {
   timer.stop();
   queue = [];
   if (rec.state === 'count' || rec.state === 'wait' || rec.state === 'rec') cancelRec('Recording cancelled');
+  if (mix.mode === 'loop' && mix.state !== 'finish') mixCancel('Loop export cancelled');
   stopLayers();
   silenceNotes();
   setPlayhead(-1);
@@ -669,6 +700,7 @@ function draw() {
     if (heardAbs >= 0 && state.view !== 'drums') setRollPlayhead(heardAbs % state.mel[state.view].len);
   }
   drawLayers();
+  mixUi();
   requestAnimationFrame(draw);
 }
 
@@ -1060,6 +1092,7 @@ function onBar(t) {
   barTimes.push({ idx: barCount, time: t });
   if (barTimes.length > 4) barTimes.shift();
   recOnBar(t);
+  mixOnBar(t);
   for (const l of state.layers) layerPlay(l, t, barCount, 0);
 }
 // bring a layer in right away (mid-bar), and at any bar line already queued
@@ -1120,7 +1153,21 @@ if(f0+n>=j.stop){const want=Math.max(0,j.stop-j.start),out=new Float32Array(want
 for(const p of j.parts){if(o>=want)break;const q=p.length>want-o?p.subarray(0,want-o):p;out.set(q,o);o+=q.length}
 this.port.postMessage({id:j.id,data:out},[out.buffer]);this.job=null}}
 return true}}
-registerProcessor('gl-capture',Cap);`;
+registerProcessor('gl-capture',Cap);
+class Mix extends AudioWorkletProcessor{
+constructor(){super();this.j=null;
+this.port.onmessage=e=>{const m=e.data;
+if(m.cmd==='start')this.j={id:m.id,start:m.start<0?currentFrame:m.start,stop:Infinity,buf:new Int16Array(16384),n:0};
+else if(m.cmd==='stop'){if(this.j)this.j.stop=m.stop<0?currentFrame:m.stop}
+else if(m.cmd==='cancel')this.j=null}}
+process(inputs){const j=this.j;if(!j)return true;const L=inputs[0]&&inputs[0][0],R=inputs[0]&&(inputs[0][1]||inputs[0][0]),f0=currentFrame,n=L?L.length:128;
+const a=Math.max(j.start,f0),b=Math.min(j.stop,f0+n);
+for(let i=a-f0;i<b-f0;i++){let l=L?L[i]:0,r=R?R[i]:0;l=l>1?1:l<-1?-1:l;r=r>1?1:r<-1?-1:r;
+j.buf[j.n++]=l<0?l*32768:l*32767;j.buf[j.n++]=r<0?r*32768:r*32767;
+if(j.n===j.buf.length){this.port.postMessage({id:j.id,pcm:j.buf},[j.buf.buffer]);j.buf=new Int16Array(16384);j.n=0}}
+if(f0+n>=j.stop){const t=j.buf.slice(0,j.n);this.port.postMessage({id:j.id,pcm:t,done:true},[t.buffer]);this.j=null}
+return true}}
+registerProcessor('gl-mix',Mix);`;
 
 let workletP = null, micCap = null, gridCap = null, micStream = null, micSrc = null, micInLatency = 0;
 let jobSeq = 0, meterPeak = 0, meterLevel = 0;
@@ -1197,7 +1244,7 @@ const rec = { state: 'idle', mode: 'new', slot: -1, layerId: null, src: 'mic', b
 function click(t, accent) {
   const o = osc('square', accent ? 1600 : 1100), g = ctx.createGain();
   env(g.gain, t, 0.35, 0.001, 0.04);
-  o.connect(g).connect(masterGain); o.start(t); o.stop(t + 0.06);
+  o.connect(g).connect(masterComp); o.start(t); o.stop(t + 0.06);   // speakers only, never the master recording
 }
 const frameAt = t => Math.round((t + rec.offset) * ctx.sampleRate);
 function beginRec(t) {
@@ -1534,6 +1581,161 @@ $('calib').addEventListener('click', calibrate);
   for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, () => { drag = null; });
 }
 window.addEventListener('resize', renderPads);
+
+/* =========================================================
+   Master recorder: Rec captures everything you hear (drums, instruments, loop pads)
+   as a 16-bit stereo WAV; Loop records exactly one pass of the loop, bar line to bar line.
+   ========================================================= */
+const MAX_MIX_SEC = 15 * 60;   // ~170 MB of audio in memory; plenty for a jam, safe on older tablets
+const mix = { state: 'idle', mode: 'live', id: 0, bars: 1, minBar: 0, startBar: 0, endBar: 0, chunks: [], frames: 0 };
+let mixCap = null, lastTake = null, mixUiTxt = '';
+
+function ensureMixNode() {
+  if (mixCap) return;
+  mixCap = new AudioWorkletNode(ctx, 'gl-mix', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+    channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers' });
+  mixCap.port.onmessage = e => {
+    const m = e.data;
+    if (m.id !== mix.id || (mix.state !== 'rec' && mix.state !== 'finish')) return;   // leftovers of a cancelled take
+    mix.chunks.push(m.pcm); mix.frames += m.pcm.length / 2;
+    if (m.done) mixFinish();
+    else if (mix.state === 'rec' && mix.frames >= MAX_MIX_SEC * ctx.sampleRate) {
+      mixEnd(-1); toast('Recording stopped at the 15 minute limit.', 'info', 4000);
+    }
+  };
+  recComp.connect(mixCap);
+  mixCap.connect(ctx.destination);   // outputs silence; keeps the node running
+}
+// how many bars one full pass takes: drums are 1 bar, odd-length instruments and loop pads stretch it
+function loopBars() {
+  const gcd = (a, b) => b ? gcd(b, a % b) : a, lcm = (a, b) => a / gcd(a, b) * b;
+  let steps = STEPS;
+  state.mel.forEach(tr => { if (tr.notes.length && isOn(tr)) steps = lcm(steps, tr.len); });
+  let bars = steps / STEPS;
+  for (const l of state.layers) if (!l.mute) bars = lcm(bars, l.bars);
+  return Math.min(bars, 16);
+}
+// start the export where the longest loop pad starts over, so the file loops cleanly
+function loopAligned(idx) {
+  let a = null;
+  for (const l of state.layers) if (!l.mute && (!a || l.bars > a.bars)) a = l;
+  return !a || mod(idx - a.phase, a.bars) === 0;
+}
+async function mixArm(mode) {
+  initAudio();
+  if (mix.state === 'prep') return;
+  if (mix.state !== 'idle') {
+    if (mix.mode !== mode) { toast(mix.mode === 'loop' ? 'Exporting the loop. Tap Loop to cancel it first.' : 'Recording. Tap ● to stop first.', 'info', 2500); return; }
+    if (mix.state === 'wait') mixCancel();
+    else if (mix.state === 'rec') mode === 'live' ? mixEnd(-1) : mixCancel('Loop export cancelled');
+    return;
+  }
+  mix.state = 'prep';
+  try { await ensureWorklet(); ensureMixNode(); }
+  catch (e) { mix.state = 'idle'; toast(e instanceof UserError ? e.message : 'Recording failed to start: ' + e.message); return; }
+  if (mix.state !== 'prep') return;
+  mix.mode = mode; mix.id++; mix.chunks = []; mix.frames = 0;
+  if (mode === 'live') {
+    if (playing) mixBegin(-1);
+    else { mix.state = 'wait'; start(); }        // starts on the first downbeat
+  } else {
+    mix.bars = loopBars();
+    mix.minBar = playing ? barCount + 1 : 1;     // never the very first bar, so tails from the previous pass are in
+    mix.state = 'wait';
+    if (!playing) start();
+  }
+}
+function mixBegin(t) {
+  mix.state = 'rec'; mix.startBar = barCount; mix.endBar = barCount + mix.bars;
+  mixCap.port.postMessage({ cmd: 'start', id: mix.id, start: t < 0 ? -1 : Math.round(t * ctx.sampleRate) });
+}
+function mixEnd(frame) {
+  mix.state = 'finish';
+  mixCap.port.postMessage({ cmd: 'stop', stop: frame });
+}
+function mixCancel(msg) {
+  if (mixCap) mixCap.port.postMessage({ cmd: 'cancel' });
+  mix.state = 'idle'; mix.chunks = []; mix.frames = 0;
+  if (msg) toast(msg, 'info', 2500);
+}
+function mixOnBar(t) {
+  if (mix.state === 'wait' && (mix.mode === 'live' || (barCount >= mix.minBar && loopAligned(barCount)))) mixBegin(t);
+  else if (mix.state === 'rec' && mix.mode === 'loop' && barCount === mix.endBar) mixEnd(Math.round(t * ctx.sampleRate));
+}
+function wavBlob(chunks, frames, sr) {
+  const h = new DataView(new ArrayBuffer(44)), bytes = frames * 4;
+  const str = (o, x) => { for (let i = 0; i < x.length; i++) h.setUint8(o + i, x.charCodeAt(i)); };
+  str(0, 'RIFF'); h.setUint32(4, 36 + bytes, true); str(8, 'WAVE');
+  str(12, 'fmt '); h.setUint32(16, 16, true); h.setUint16(20, 1, true); h.setUint16(22, 2, true);
+  h.setUint32(24, sr, true); h.setUint32(28, sr * 4, true); h.setUint16(32, 4, true); h.setUint16(34, 16, true);
+  str(36, 'data'); h.setUint32(40, bytes, true);
+  return new Blob([h, ...chunks], { type: 'audio/wav' });
+}
+const fmtTime = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+function mixFinish() {
+  const sr = ctx.sampleRate, secs = mix.frames / sr;
+  const d = new Date(), p2 = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+  const loop = mix.mode === 'loop';
+  const name = loop ? `grid-looper-loop-${state.bpm}bpm-${mix.bars}bar-${stamp}.wav` : `grid-looper-${stamp}.wav`;
+  const blob = wavBlob(mix.chunks, mix.frames, sr);
+  mix.chunks = []; mix.frames = 0; mix.state = 'idle';
+  if (secs < 0.05) { toast('Nothing was recorded.', 'info', 2500); return; }
+  lastTake = { blob, name, saved: false };
+  const bar = $('saveBar'), info = bar.querySelector('span'), b = document.createElement('b');
+  b.textContent = loop ? 'LOOP READY' : 'RECORDING READY';
+  info.replaceChildren(b, `${loop ? mix.bars + ' bar' + (mix.bars > 1 ? 's' : '') + ' · ' : ''}${fmtTime(secs)} · ${(blob.size / 1048576).toFixed(1)} MB WAV`);
+  let canShare = false;
+  try { canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: 'audio/wav' })] })); } catch (e) {}
+  $('shareFile').style.display = canShare ? '' : 'none';
+  $('saveClose').classList.remove('armed');
+  bar.classList.add('show');
+}
+function mixUi() {
+  let r = '●', l = 'Loop', ron = false, lon = false;
+  if (mix.mode === 'live' && mix.state !== 'idle') {
+    ron = true;
+    r = mix.state === 'rec' ? fmtTime(mix.frames / ctx.sampleRate) : mix.state === 'finish' ? '…' : '●';
+  } else if (mix.mode === 'loop' && mix.state !== 'idle') {
+    lon = true;
+    const pos = heardPos();
+    l = mix.state === 'rec' && pos ? Math.min(Math.max(pos.idx - mix.startBar + 1, 1), mix.bars) + '/' + mix.bars
+      : mix.state === 'finish' ? '…' : 'Wait';
+  }
+  const key = r + l + ron + lon;
+  if (key === mixUiTxt) return;
+  mixUiTxt = key;
+  const rb = $('mixRec'), lb = $('loopExp');
+  rb.textContent = r; rb.classList.toggle('on', ron);
+  rb.setAttribute('aria-label', ron ? 'Stop recording' : 'Record everything you hear to a WAV file');
+  lb.textContent = l; lb.classList.toggle('on', lon);
+}
+onTap('mixRec', () => mixArm('live'));
+onTap('loopExp', () => mixArm('loop'));
+$('saveFile').addEventListener('click', () => {
+  if (!lastTake) return;
+  const a = document.createElement('a'), url = URL.createObjectURL(lastTake.blob);
+  a.href = url; a.download = lastTake.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  lastTake.saved = true;
+  toast('Saved as ' + lastTake.name + ' in Downloads.', 'info', 4000);
+});
+$('shareFile').addEventListener('click', async () => {
+  if (!lastTake) return;
+  try {
+    await navigator.share({ files: [new File([lastTake.blob], lastTake.name, { type: 'audio/wav' })], title: lastTake.name });
+    lastTake.saved = true;
+  } catch (e) { if (e.name !== 'AbortError') toast('Could not share the file (' + e.name + '). Try Save instead.', 'info', 4000); }
+});
+$('saveClose').addEventListener('click', () => {
+  const x = $('saveClose');
+  if (lastTake && !lastTake.saved && !x.classList.contains('armed')) {   // unsaved: second tap discards
+    x.classList.add('armed'); toast('Not saved yet. Tap ✕ again to throw it away.', 'info', 3000);
+    return;
+  }
+  lastTake = null; x.classList.remove('armed'); $('saveBar').classList.remove('show'); hideToast();
+});
 
 /* ---------- message banner ---------- */
 let toastTimer = 0;

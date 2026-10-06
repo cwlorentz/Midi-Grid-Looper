@@ -70,6 +70,15 @@ The 8 big pads under the grid are audio loops, like a hardware looper. Everythin
 - Loops are saved on the tablet (browser storage) and come back after closing the app.
 - On a keyboard, keys 1 to 8 tap the pads.
 
+## Recording and exporting (Rec / Loop)
+
+The **●** and **Loop** tiles next to Master save what you hear as a WAV file (16-bit stereo, the tablet's sample rate). Everything is in it: drums, instruments and loop pads, after the Master slider. Count-in clicks are left out.
+
+- **● (Rec)** records everything you hear until you tap it again. The tile shows the time. If the transport is stopped, it starts playing and the recording begins on the first beat. Stopping the transport doesn't end the recording, so you can stop and restart within one take. It stops by itself at 15 minutes.
+- **Loop** records exactly one pass of the loop, from bar line to bar line, so the file loops cleanly in other apps. The length covers the longest thing that repeats: 1 bar for drums, more when an instrument has an odd step count or a loop pad is longer (16 bars at most). It waits for a bar line (the tile says **Wait**, then shows bar 1/4, 2/4 ...). Tap it again to cancel.
+- When the file is ready, a panel at the top right offers **Save** (to the Downloads folder), **Share** (send it to Drive, a DAW, email ...) and **✕** (discard; needs a second tap if you haven't saved or shared it).
+- Live mic input is only in the recording once it's on a loop pad; the mic isn't monitored through the speaker.
+
 ## Known limitations
 
 - The installed app and the Chrome tab share the same saved pattern only when they're the same address. A different host (Netlify vs GitHub Pages) means separate saved data.
@@ -80,5 +89,6 @@ The 8 big pads under the grid are audio loops, like a hardware looper. Everythin
 - Bluetooth headphones add a large, variable delay (often 150 to 300 ms). Run **Cal** without them, then add the extra by dragging Delay, or use wired headphones.
 - Changing BPM speeds loops up or down, so their pitch changes too.
 - Instruments have one octave on screen at a time and 16 steps at most; the drum tracks are always 16 steps.
-- Loops are mono and stay on this tablet; they aren't part of any export yet.
+- Loops are mono and stay on this tablet. To take them elsewhere, use **●** or **Loop** to export a WAV of the mix; single loops can't be exported on their own yet.
+- WAV files are big (about 10 MB a minute). The recording is held in memory until you save it, and only the latest one is kept: starting a new one replaces an unsaved one.
 - The Android navigation bar may appear briefly on swipe from the edge; that's normal for fullscreen apps.
