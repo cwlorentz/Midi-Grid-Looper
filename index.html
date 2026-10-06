@@ -15,10 +15,13 @@
 :root{
   --bg:#0c0d10; --panel:#16181d; --panel2:#23262e; --line:#2c3039; --text:#f2f3f5; --dim:#8b909c;
   --cell-a:#1e2128; --cell-b:#252932; --ph:#3c4252; --accent:#ffb340;
-  --top-h:76px; --head-w:clamp(240px,23vw,300px);
   --tile:56px;   /* every button in the top bar is a tile of this size */
+  --top-h:calc(var(--tile) + 20px);
+  --head-w:clamp(236px,18vw,260px);  /* drum track names */
+  --rhead-w:clamp(196px,15vw,216px); /* piano roll settings, kept narrow so note cells get the room */
   --ms:var(--tile); /* mute/solo tiles match the top-bar tiles */
-  --deck-h:calc(var(--tile) * 3 + 96px); --deck-w:304px;
+  /* deck: pad + M/X row + volume, sized to the controls so the pads carry no dead space */
+  --deck-h:calc(var(--tile) * 3 + 72px); --deck-w:clamp(256px,20vw,290px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
@@ -75,7 +78,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 
 /* ---------- grid ---------- */
 #grid{flex:1;min-height:0;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:6px;padding:6px 10px 10px}
-@media (max-height:760px){:root{--tile:48px;--deck-w:270px}.vbtn{font-size:11px;letter-spacing:0}}
+@media (max-height:760px){:root{--tile:48px;--deck-w:256px}.vbtn,#deckCtl .txt{font-size:11px;letter-spacing:0}}
 @media (max-width:1180px){#top{gap:8px}#swing,#master{width:90px}}
 .row{display:grid;grid-template-columns:var(--head-w) 1fr;gap:10px;min-height:0}
 .head{display:grid;grid-template-columns:minmax(0,1fr) var(--ms) var(--ms);grid-template-rows:minmax(0,1fr) 18px;
@@ -101,23 +104,26 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:1px;bac
 .row.silent .steps,.row.silent .name{opacity:.35}
 
 /* ---------- piano roll (shown in place of the drum grid) ---------- */
-#roll{flex:1;min-height:0;display:none;grid-template-columns:var(--head-w) 1fr;gap:10px;padding:6px 10px 10px}
+#roll{flex:1;min-height:0;display:none;grid-template-columns:var(--rhead-w) 1fr;gap:10px;padding:6px 10px 10px}
 body.mel #grid{display:none}
 body.mel #roll{display:grid}
-#rhead{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:6px 6px 6px 10px;border-left:6px solid var(--c);min-height:0}
+#rhead{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:6px 6px 6px 8px;border-left:6px solid var(--c);min-height:0}
 .rh{display:flex;gap:6px;align-items:center;flex:1 1 0;min-height:30px;max-height:var(--tile)}
-.rh>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);width:52px;flex:none}
+.rh>label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);flex:none;margin:0 2px}
 .rh button{height:100%;width:var(--tile);font-size:22px}
 .rh button.txt{font-size:13px}
+/* settings name sits small on top of its value, so no label column is needed */
+[data-cap]{flex-direction:column;gap:1px;line-height:1.1}
+[data-cap]::before{content:attr(data-cap);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .rh .wide{flex:1;width:auto;min-width:0}
 .rh .name{flex:1;width:auto;font-size:15px;padding:0 4px}
 .rh .mute,.rh .solo{font-size:17px}
 .rh .seg.on{background:var(--c);color:#111}
-.rval{min-width:44px;height:100%;flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:300;
+.rval{min-width:0;height:100%;flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:300;
   font-variant-numeric:tabular-nums;background:var(--bg);border-radius:2px}
 #rVol{flex:none;width:100%;height:22px;--fill:var(--c)}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:4px;min-height:0}
-.rrow{display:grid;grid-template-columns:46px 1fr;gap:6px;min-height:0}
+.rrow{display:grid;grid-template-columns:42px 1fr;gap:6px;min-height:0}
 .nlab{display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:12px;font-weight:700;color:var(--dim);background:var(--panel)}
 .rrow.root .nlab{color:var(--c)}
 .rrow.root .cell:not(.on):not(.tail){background:#2a2e38}
@@ -132,14 +138,14 @@ body.mel #roll{display:grid}
 
 /* ---------- looper deck: 8 big pads under the grid, like a hardware looper ---------- */
 #deck{flex:none;height:var(--deck-h);display:grid;grid-template-columns:var(--deck-w) minmax(0,1fr);gap:10px;padding:0 10px 10px}
-#deckCtl{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:8px;min-height:0}
+#deckCtl{display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:8px;min-height:0;position:relative}
 .drow{display:flex;gap:6px;align-items:center;flex:none}
 .drow>label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0 2px 0 4px}
 #barsRow button{flex:1;width:auto;min-width:0}
 .seg.on,#countIn.on{background:var(--accent);color:#111}
-#recStatus{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:6px;font-size:13px;line-height:1.3;font-weight:600;color:var(--dim);padding:0 4px}
-#recStatus span{overflow:hidden;max-height:2.6em}
-#meter{height:6px;background:var(--line);visibility:hidden}
+#recStatus{flex:1;min-height:0;display:flex;align-items:center;font-size:12px;line-height:1.2;font-weight:600;color:var(--dim);padding:0 4px}
+#recStatus span{overflow:hidden;max-height:2.4em}
+#meter{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--line);visibility:hidden}
 #meter.show{visibility:visible}
 #meter i{display:block;height:100%;width:0;background:#5ee08a}
 #latVal{min-width:64px;height:var(--tile);flex:1;display:flex;align-items:center;justify-content:center;font-size:17px;
@@ -153,6 +159,12 @@ body.mel #roll{display:grid}
 .pnum{left:10px;top:4px;font-size:30px;font-weight:300;color:var(--c)}
 .pst{left:10px;top:44px;font-size:12px;letter-spacing:.1em}
 .pname{left:10px;right:8px;bottom:12px;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em}
+/* empty pad: a big record mark fills the face; loops get a full-height waveform instead */
+.pad.empty::before{content:'';position:absolute;left:50%;top:52%;width:clamp(22px,32%,54px);aspect-ratio:1;border-radius:50%;
+  transform:translate(-50%,-50%);border:3px solid color-mix(in srgb,#e5393b 55%,transparent);pointer-events:none}
+.pad.empty .pst{display:none}
+/* live input level while this pad records from the mic */
+.plev{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(255,255,255,.22);pointer-events:none}
 .pprog{position:absolute;left:0;bottom:0;height:5px;width:0;background:var(--c)}
 .pad.empty .pst{color:var(--dim)}
 .pad.empty .pnum{color:var(--dim)}
@@ -170,6 +182,7 @@ body.mel #roll{display:grid}
 .sbtn .del.armed{background:#e5393b;color:#fff}
 .strip.empty .sbtn,.strip.empty .vol{opacity:.3;pointer-events:none}
 .strip .vol{flex:none;width:100%;height:22px;--fill:var(--c)}
+@media (max-width:1100px){.pnum{font-size:24px}.pst{top:36px;font-size:11px;letter-spacing:.04em}.pname{bottom:9px;font-size:10px;letter-spacing:0}}
 .strip.cancel .del{opacity:1;pointer-events:auto;background:#e5393b;color:#fff}
 .strip.cancel .sbtn{opacity:1;pointer-events:auto}
 
@@ -229,13 +242,13 @@ body.mel #roll{display:grid}
     <div class="rh"><button class="name" id="rName"></button>
       <button class="mute" id="rMute">M</button><button class="solo" id="rSolo">S</button></div>
     <input id="rVol" class="vol" type="range" min="0" max="100" step="1" aria-label="Track volume">
-    <div class="rh"><label>Key</label><button id="keyDown" aria-label="Key down">−</button>
-      <div class="rval" id="keyVal"></div><button id="keyUp" aria-label="Key up">+</button></div>
-    <div class="rh"><label>Scale</label><button id="scaleBtn" class="txt wide" aria-label="Change scale"></button></div>
-    <div class="rh"><label>Oct</label><button id="octDown" aria-label="Octave down">−</button>
-      <div class="rval" id="octVal"></div><button id="octUp" aria-label="Octave up">+</button></div>
-    <div class="rh"><label>Steps</label><button id="lenDown" aria-label="Shorter pattern">−</button>
-      <div class="rval" id="lenVal"></div><button id="lenUp" aria-label="Longer pattern">+</button></div>
+    <div class="rh"><button id="keyDown" aria-label="Key down">−</button>
+      <div class="rval" id="keyVal" data-cap="Key"></div><button id="keyUp" aria-label="Key up">+</button></div>
+    <div class="rh"><button id="scaleBtn" class="txt wide" data-cap="Scale" aria-label="Change scale"></button></div>
+    <div class="rh"><button id="octDown" aria-label="Octave down">−</button>
+      <div class="rval" id="octVal" data-cap="Oct"></div><button id="octUp" aria-label="Octave up">+</button></div>
+    <div class="rh"><button id="lenDown" aria-label="Shorter pattern">−</button>
+      <div class="rval" id="lenVal" data-cap="Steps"></div><button id="lenUp" aria-label="Longer pattern">+</button></div>
     <div class="rh"><label>Tap</label><button class="txt wide seg" data-edit="note">Note</button>
       <button class="txt wide seg" data-edit="vel" aria-label="Tap a note to change how loud it is">Vel</button></div>
   </div>
@@ -1426,7 +1439,7 @@ for (let i = 0; i < MAX_LAYERS; i++) {
   el.style.setProperty('--c', LAYER_COLORS[i]);
   el.innerHTML =
     `<button class="pad" data-slot="${i}" aria-label="Loop pad ${i + 1}">
-       <canvas></canvas><span class="pnum">${i + 1}</span><span class="pst"></span><span class="pname"></span><i class="pprog"></i>
+       <canvas></canvas><span class="pnum">${i + 1}</span><span class="pst"></span><span class="pname"></span><i class="plev"></i><i class="pprog"></i>
      </button>
      <div class="sbtn">
        <button class="mute" data-slot="${i}" aria-label="Mute loop ${i + 1}">M</button>
@@ -1435,7 +1448,7 @@ for (let i = 0; i < MAX_LAYERS; i++) {
      <input class="vol" type="range" min="0" max="100" step="1" data-slot="${i}" aria-label="Loop ${i + 1} volume">`;
   padsEl.appendChild(el);
   strips[i] = { el, pad: el.querySelector('.pad'), canvas: el.querySelector('canvas'), st: el.querySelector('.pst'),
-    name: el.querySelector('.pname'), prog: el.querySelector('.pprog'), mute: el.querySelector('.mute'),
+    name: el.querySelector('.pname'), prog: el.querySelector('.pprog'), lev: el.querySelector('.plev'), mute: el.querySelector('.mute'),
     del: el.querySelector('.del'), vol: el.querySelector('.vol'), drawn: null, cls: '', txt: '' };
 }
 function drawWave(r, l) {
@@ -1450,7 +1463,7 @@ function drawWave(r, l) {
   if (!buf) return;
   g.fillStyle = 'rgba(255,255,255,.1)';
   for (let b = 1; b < l.bars; b++) g.fillRect(Math.round(b / l.bars * w), 0, Math.max(1, devicePixelRatio), h);
-  const d = buf.getChannelData(0), per = d.length / w, mid = h * 0.55, amp = h * 0.3;
+  const d = buf.getChannelData(0), per = d.length / w, mid = h * 0.56, amp = h * 0.36;
   g.fillStyle = l.color;
   g.globalAlpha = 0.75;
   for (let x = 0; x < w; x++) {
@@ -1467,7 +1480,10 @@ function renderPads() {
     r.el.classList.toggle('empty', !l);
     r.mute.classList.toggle('on', !!(l && l.mute));
     setRange(r.vol, l ? Math.round(l.vol * 100) : 0);
-    r.name.textContent = l ? `${l.name} · ${l.bars} bar${l.bars > 1 ? 's' : ''}` : '';
+    // an empty pad says what tapping it will record
+    const nb = state.rec.bars;
+    r.name.textContent = l ? `${l.name} · ${l.bars} bar${l.bars > 1 ? 's' : ''}` :
+      `${state.rec.src === 'mic' ? 'Mic' : 'Grid'} · ${nb ? nb + ' bar' + (nb > 1 ? 's' : '') : 'free'}`;
     drawWave(r, l);
   });
   $('deck').querySelectorAll('[data-src]').forEach(b => b.classList.toggle('on', b.dataset.src === state.rec.src));
@@ -1515,6 +1531,7 @@ function drawLayers() {
     if (mine && rec.mode === 'new') p = recProg >= 0 ? recProg : 0;
     else if (l && pos) p = (mod(pos.idx - l.phase, l.bars) + pos.frac) / l.bars;
     r.prog.style.width = (p * 100) + '%';
+    r.lev.style.height = mine && micStream && rec.state !== 'finish' ? Math.min(100, Math.sqrt(meterLevel) * 100) + '%' : '0';
   });
   if (status !== lastStatus) { $('recStatus').firstElementChild.textContent = status; lastStatus = status; }
   // input meter
