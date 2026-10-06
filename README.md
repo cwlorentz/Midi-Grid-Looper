@@ -4,7 +4,7 @@ This folder is the whole app. Upload the folder as it is; don't rename the files
 
 | File | What it is |
 |---|---|
-| `index.html` | The looper (Phase 1 grid plus audio layers), with the install links and service worker registration |
+| `index.html` | The looper (Phase 1 grid plus the looper deck), with the install links and service worker registration |
 | `manifest.webmanifest` | App name, icons, fullscreen, landscape |
 | `sw.js` | Offline cache (cache-first, versioned) |
 | `icon.svg`, `icon-192.png`, `icon-512.png` | App icon |
@@ -44,16 +44,18 @@ Edit `sw.js` and bump `VERSION` (e.g. `looper-v1` → `looper-v2`), then re-uplo
 - [ ] Bump `VERSION`, re-upload a small visible change, reopen twice: the change appears.
 - [ ] Timing still steady when launched from the home screen (same as in the browser tab).
 
-## Audio layers (mic recording and loop layering)
+## Looper deck (mic recording and loop layering)
 
-Tap **Layers** in the top bar to swap the step grid for 8 audio layer lanes; tap **Grid** to go back. Layers keep playing in both views.
+The 8 big pads under the grid are audio loops, like a hardware looper. Everything is on one screen.
 
-- **Rec from Mic** records the tablet microphone. **Rec from Grid** bounces the drum grid into a layer, so you can then change or clear the beat and stack another on top.
-- **Bars** sets the take length (1, 2, 4 or 8 bars). Recording always starts and stops on a bar line and the layer loops at that length, in time with the grid.
-- **●** starts a take. If the transport is stopped it starts playing, with one bar of clicks first when **Count** is on (mic only). If it's already playing, the take starts at the next bar. Tap **■** to cancel a take.
-- Each layer has volume, **M** (mute) and **✕** (clear, tap twice). Up to 8 layers; each take adds a new one, so overdubbing is just recording again.
-- **Delay** shifts mic takes earlier to make up for the tablet's audio delay. It starts on an automatic guess; tap **Cal** with the speaker on (no headphones) in a quiet room to measure it, or drag the number up/down to fine-tune.
-- Layers are saved on the tablet (browser storage) and come back after closing the app.
+- **Tap an empty pad** to record into it. If the transport is stopped it starts playing, with one bar of clicks first when **Count** is on (mic only). If it's already playing, recording starts on the next bar line.
+- **Bars** sets the take length: 1, 2, 4 or 8 bars, then it stops by itself and starts looping. **Free** keeps recording until you tap the pad again; it ends on the nearest bar line.
+- **Tap a playing pad** to overdub onto that loop from the next bar. Tap it again to stop overdubbing on the next bar line.
+- **In: Mic** records the tablet microphone. **In: Grid** records the drum grid instead, so you can bounce a beat to a pad, change the beat, and stack another.
+- Under each pad: **M** mutes it, **✕** clears it (tap twice; while a pad is recording one tap cancels the take), and the slider sets its volume.
+- **Delay** shifts mic recordings earlier to make up for the tablet's audio delay. It starts on an automatic guess; tap **Cal** with the speaker on (no headphones) in a quiet room to measure it, or drag the number up/down to fine-tune.
+- Loops are saved on the tablet (browser storage) and come back after closing the app.
+- On a keyboard, keys 1 to 8 tap the pads.
 
 ## Known limitations
 
@@ -61,8 +63,8 @@ Tap **Layers** in the top bar to swap the step grid for 8 audio layer lanes; tap
 - Orientation lock comes from the manifest and only applies to the installed app; in a normal Chrome tab, the ⛶ fullscreen button still does the locking.
 - Updates take effect on the next launch, not instantly, so a re-upload never interrupts playback.
 - The mic only works from the https address (GitHub Pages / Netlify) and only after Chrome asks for and gets microphone permission. If you said no, allow it again in Chrome ⋮ › Settings › Site settings › Microphone.
-- Recording through the speaker also picks up the drums and other layers. Use wired headphones for clean takes.
+- Recording through the speaker also picks up the drums and other loops, and overdubbing then doubles them. Use wired headphones for clean takes.
 - Bluetooth headphones add a large, variable delay (often 150 to 300 ms). Run **Cal** without them, then add the extra by dragging Delay, or use wired headphones.
-- Changing BPM speeds layers up or down, so their pitch changes too.
-- Layers are mono and stay on this tablet; they aren't part of any export yet.
+- Changing BPM speeds loops up or down, so their pitch changes too.
+- Loops are mono and stay on this tablet; they aren't part of any export yet.
 - The Android navigation bar may appear briefly on swipe from the edge; that's normal for fullscreen apps.
