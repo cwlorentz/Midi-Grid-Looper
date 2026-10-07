@@ -174,22 +174,27 @@ body.mel #roll{display:grid}
 #rmap .gt{position:absolute;left:calc(44*var(--u));width:calc(5*var(--u));height:calc(5*var(--u));margin-left:calc(-2.5*var(--u));background:var(--g);border-radius:50%;transform:translateY(50%)}
 #rmap .gt.hit::after{content:'';position:absolute;inset:0;border-radius:50%;border:1px solid var(--g);animation:gping .5s ease-out forwards}
 @keyframes gping{from{transform:scale(1);opacity:.8}to{transform:scale(4);opacity:0}}
-/* sparkle: a few tiny glints in the track colour that drift out and fade as a note is heard. One reused <i> per cell;
-   only transform/opacity animate, and the two keyframe names alternate so a re-hit restarts without a reflow */
-.spk{position:absolute;inset:calc(-14*var(--u));z-index:1;pointer-events:none;opacity:0;--sc:var(--c);background-repeat:no-repeat;
-  background-image:linear-gradient(90deg,transparent,#fff 50%,transparent),linear-gradient(transparent,#fff 50%,transparent),
-    radial-gradient(circle,#fff 0 calc(1.2*var(--u)),var(--sc) calc(2.2*var(--u)),transparent calc(4.5*var(--u))),
-    radial-gradient(circle,#fff 0 calc(1*var(--u)),var(--sc) calc(2*var(--u)),transparent calc(4*var(--u))),
-    radial-gradient(circle,var(--sc) 0 calc(1.2*var(--u)),transparent calc(3*var(--u))),
-    radial-gradient(circle,var(--sc) 0 calc(1*var(--u)),transparent calc(2.6*var(--u)));
-  background-size:calc(14*var(--u)) 2px,2px calc(14*var(--u)),calc(10*var(--u)) calc(10*var(--u)),calc(8*var(--u)) calc(8*var(--u)),
-    calc(6*var(--u)) calc(6*var(--u)),calc(6*var(--u)) calc(6*var(--u));
-  background-position:right calc(2*var(--u)) top calc(9*var(--u) - 1px),right calc(9*var(--u) - 1px) top calc(2*var(--u)),
-    right calc(4*var(--u)) top calc(4*var(--u)),left calc(3*var(--u)) bottom calc(4*var(--u)),
-    left calc(16*var(--u)) top calc(2*var(--u)),right calc(1*var(--u)) bottom calc(16*var(--u))}
-.spk.a{animation:spkA .26s ease-out both}.spk.b{animation:spkB .26s ease-out both}
-@keyframes spkA{0%{opacity:0;transform:rotate(var(--rot)) scale(.72)}25%{opacity:.85}100%{opacity:0;transform:rotate(var(--rot)) scale(1.12)}}
-@keyframes spkB{0%{opacity:0;transform:rotate(var(--rot)) scale(.72)}25%{opacity:.85}100%{opacity:0;transform:rotate(var(--rot)) scale(1.12)}}
+/* sparkle, Zelda style: golden four-point stars burst off the pad's corners with a warm flash as a note is heard,
+   then twirl out. One reused <i> per cell; only transform/opacity animate, and the two keyframe names alternate
+   so a re-hit restarts without a reflow. Each star is two crossed tapering ellipses (--arm) */
+.spk{position:absolute;inset:calc(-24*var(--u));z-index:1;pointer-events:none;opacity:0;background-repeat:no-repeat;
+  --arm:radial-gradient(closest-side,#fff,#fff3c4 30%,rgba(255,210,90,.55) 62%,transparent);
+  --gold:radial-gradient(circle,#fff 0 18%,#ffd75e 40%,transparent 72%);
+  background-image:var(--arm),var(--arm),var(--gold),var(--arm),var(--arm),var(--arm),var(--arm),var(--gold),
+    radial-gradient(circle,var(--c) 0 30%,transparent 70%),var(--gold),
+    radial-gradient(closest-side,rgba(255,228,150,.42),rgba(255,214,110,.12) 62%,transparent);
+  background-size:calc(28*var(--u)) calc(4*var(--u)),calc(4*var(--u)) calc(28*var(--u)),calc(10*var(--u)) calc(10*var(--u)),
+    calc(18*var(--u)) calc(3*var(--u)),calc(3*var(--u)) calc(18*var(--u)),calc(11*var(--u)) calc(2.4*var(--u)),calc(2.4*var(--u)) calc(11*var(--u)),
+    calc(6*var(--u)) calc(6*var(--u)),calc(6*var(--u)) calc(6*var(--u)),calc(5*var(--u)) calc(5*var(--u)),100% 100%;
+  background-position:right calc(-2*var(--u)) top calc(10*var(--u)),right calc(10*var(--u)) top calc(-2*var(--u)),right calc(7*var(--u)) top calc(7*var(--u)),
+    left calc(5*var(--u)) bottom calc(12.5*var(--u)),left calc(12.5*var(--u)) bottom calc(5*var(--u)),
+    left calc(13*var(--u)) top calc(5.8*var(--u)),left calc(17.3*var(--u)) top calc(1.5*var(--u)),
+    right calc(4*var(--u)) bottom calc(22*var(--u)),left calc(3*var(--u)) top calc(32*var(--u)),right calc(30*var(--u)) bottom calc(3*var(--u)),center}
+.spk.a{animation:spkA .42s cubic-bezier(.2,.8,.3,1) both}.spk.b{animation:spkB .42s cubic-bezier(.2,.8,.3,1) both}
+@keyframes spkA{0%{opacity:0;transform:rotate(var(--rot)) scale(.45)}18%{opacity:1;transform:rotate(var(--rot)) scale(1)}55%{opacity:.9}
+  100%{opacity:0;transform:rotate(calc(var(--rot) + 25deg)) scale(1.18)}}
+@keyframes spkB{0%{opacity:0;transform:rotate(var(--rot)) scale(.45)}18%{opacity:1;transform:rotate(var(--rot)) scale(1)}55%{opacity:.9}
+  100%{opacity:0;transform:rotate(calc(var(--rot) + 25deg)) scale(1.18)}}
 @media (prefers-reduced-motion:reduce){.cell.gh::after{animation:none}.spk{display:none}}
 #rbody{display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));gap:calc(4*var(--u));min-height:0;isolation:isolate}
 .rrow{display:grid;grid-template-columns:calc(42*var(--u)) 1fr;gap:calc(6*var(--u));min-height:0}
