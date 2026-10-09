@@ -1,7 +1,7 @@
 // GL-8 test build: network first so every reload picks up the newest version,
 // with a cached copy for offline use. Its own scope (this folder) keeps it apart
 // from the main Grid Looper's service worker.
-const VERSION = 'gl8-v1';
+const VERSION = 'gl8-v2';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
